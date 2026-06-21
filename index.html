@@ -1,0 +1,2582 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Informasi & Nilai Harian</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            /* Indigo 600 */
+            --primary-hover: #4338ca;
+            /* Indigo 700 */
+            --secondary: #0ea5e9;
+            /* Sky 500 */
+            --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.6);
+            --text-dark: #0f172a;
+            /* Slate 900 */
+            --text-light: #64748b;
+            /* Slate 500 */
+            --success: #10b981;
+            --success-hover: #059669;
+            --warning: #f59e0b;
+            --warning-hover: #d97706;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            color: var(--text-dark);
+        }
+
+        /* custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Login Screen & Modals */
+        #login-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.27)), url('https://lh3.googleusercontent.com/d/1zrWpW5SU-vXL-kJ__0Zs6aD5UmiUo7qq') no-repeat center center;
+            background-size: cover;
+            backdrop-filter: blur(40px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(8px);
+            display: none;
+            /* MUST BE NONE BY DEFAULT */
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .login-box,
+        .modal-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 3rem 2.5rem;
+            border-radius: var(--radius-xl);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            text-align: center;
+            width: 100%;
+            max-width: 420px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            animation: popIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        #login-logo-container {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 1rem auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #login-logo-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+        }
+
+        @media (max-width: 480px) {
+            .login-box {
+                padding: 2rem 1.5rem;
+            }
+            #login-logo-container {
+                width: 80px;
+                height: 80px;
+                margin-bottom: 0.5rem;
+            }
+            .login-box h2 {
+                font-size: 1.5rem !important;
+            }
+            .login-box p {
+                font-size: 0.85rem !important;
+                margin-bottom: 1.5rem !important;
+            }
+        }
+
+        .modal-content {
+            width: 500px;
+            /* Base for other modals */
+        }
+
+        @keyframes popIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.95) translateY(10px);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .login-box h2,
+        .modal-content h2,
+        .modal-content h3 {
+            color: var(--text-dark);
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            margin-bottom: 0.5rem;
+            text-align: left;
+        }
+
+        .login-box h2 {
+            text-align: center;
+        }
+
+        .login-box p,
+        .modal-content p {
+            color: var(--text-light);
+            font-size: 0.875rem;
+            margin-bottom: 1.5rem;
+        }
+
+        input.form-control,
+        select.form-control,
+        .login-box input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid #cbd5e1;
+            background-color: #f8fafc;
+            border-radius: var(--radius-md);
+            font-size: 0.95rem;
+            color: var(--text-dark);
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        input.form-control:focus,
+        select.form-control:focus,
+        .login-box input:focus {
+            border-color: var(--primary);
+            background-color: #fff;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+        }
+
+        #app-guru,
+        #app-admin {
+            display: none;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        /* Sidebar Controls */
+        .sidebar {
+            width: 320px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid var(--glass-border);
+            padding: 2rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            box-shadow: var(--shadow-lg);
+            z-index: 10;
+            overflow-y: auto;
+            flex-shrink: 0;
+            transition: margin-left 0.3s ease;
+        }
+
+        #app-guru.sidebar-collapsed .sidebar,
+        #app-admin.sidebar-collapsed .sidebar {
+            margin-left: -320px;
+        }
+
+        .sidebar-toggle-btn {
+            position: fixed;
+            left: 302px;
+            /* 320px sidebar - 18px */
+            top: 50%;
+            transform: translateY(-50%);
+            width: 36px;
+            height: 36px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 9999;
+            border: 2px solid white;
+            box-shadow: var(--shadow-md);
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-toggle-btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        #app-guru.sidebar-collapsed .sidebar-toggle-btn,
+        #app-admin.sidebar-collapsed .sidebar-toggle-btn {
+            left: 10px;
+            transform: translateY(-50%) rotate(180deg);
+        }
+
+        .brand {
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .brand h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+        }
+
+        .brand p {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-top: 0.3rem;
+        }
+
+        .control-group {
+            background: rgba(255, 255, 255, 0.6);
+            padding: 1.25rem;
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .control-group h3 {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-light);
+            margin-bottom: 1rem;
+        }
+
+        .profile-info {
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 5px;
+            font-size: 0.95rem;
+        }
+
+        .profile-class {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-bottom: 15px;
+        }
+
+        .mapel-list {
+            max-height: 1000px;
+            overflow-y: auto;
+            font-size: 0.85rem;
+            margin-bottom: 10px;
+        }
+
+        .mapel-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: none;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn:last-child {
+            margin-bottom: 0;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);
+        }
+
+        .btn-success:hover {
+            background: var(--success-hover);
+            box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.2);
+        }
+
+        .btn-warning:hover {
+            background: var(--warning-hover);
+            box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-danger:hover {
+            background: var(--danger-hover);
+            box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: white;
+            color: var(--text-dark);
+            border: 1px solid #e2e8f0;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-outline:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            padding: 2rem;
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+            background-color: #94a3b8;
+            /* darker background for contrast with white papers */
+            position: relative;
+        }
+
+        /* ADMIN AREA */
+        .admin-nav {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .admin-nav .btn {
+            width: auto;
+            padding: 10px 20px;
+        }
+
+        .admin-card {
+            background: white;
+            width: 100%;
+            max-width: 1000px;
+            padding: 2rem;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .admin-card h2 {
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .admin-table th {
+            background-color: #f8fafc;
+            color: var(--text-light);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 1rem;
+            border-bottom: 2px solid #e2e8f0;
+            text-align: left;
+        }
+
+        .admin-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            color: var(--text-dark);
+            text-align: left;
+        }
+
+        .admin-table [contenteditable="true"] {
+            outline: none;
+            transition: 0.2s;
+            border-radius: 4px;
+            padding: 4px;
+        }
+
+        .admin-table [contenteditable="true"]:hover {
+            background-color: #fef08a;
+        }
+
+        .admin-table [contenteditable="true"]:focus {
+            background: #fefce8;
+            box-shadow: inset 0 0 0 2px var(--primary);
+        }
+
+        /* GURU DATA ENTRY AREA (Input Tables) */
+        .guru-table-container {
+            width: 100%;
+            min-height: 200px;
+            background: white;
+            padding: 20px;
+            box-shadow: var(--shadow-lg);
+            border-radius: var(--radius-xl);
+            position: relative;
+            flex-shrink: 0;
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+
+        /* ADMIN PREVIEW AREA (A4 Pages / Print format) */
+        .page-container {
+            width: max-content;
+            min-width: 297mm;
+            min-height: 210mm;
+            background: white;
+            padding: 10mm;
+            box-shadow: var(--shadow-xl);
+            position: relative;
+            flex-shrink: 0;
+            margin-bottom: 2rem;
+            border-radius: 4px;
+            color: black;
+            /* Strict black for print */
+            page-break-after: always;
+            break-after: page;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .page-container.f4 {
+            min-width: 330mm;
+            min-height: 215mm;
+        }
+
+        /* Print Typography & Elements */
+        .kop-surat {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+        }
+
+        .kop-surat img {
+            width: 80px;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .kop-text {
+            flex: 1;
+            text-align: center;
+            padding: 0 15px;
+        }
+
+        .kop-text h2 {
+            font-size: 16px;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+        }
+
+        .kop-text h1 {
+            font-size: 22px;
+            margin-bottom: 4px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .kop-text p {
+            font-size: 11px;
+            margin: 0;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+
+        .info-row {
+            display: flex;
+        }
+
+        .info-row .label {
+            width: 120px;
+            font-weight: bold;
+        }
+
+        .info-row .colon {
+            width: 20px;
+        }
+
+        .swal2-high-z {
+            z-index: 999999 !important;
+        }
+
+        /* Print Tables */
+        .guru-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            table-layout: auto;
+        }
+
+        .guru-table th,
+        .guru-table td {
+            border: 1px solid #000;
+            padding: 6px 4px;
+            text-align: center;
+            color: black;
+        }
+
+        .guru-table th {
+            background-color: #f3f4f6;
+            font-weight: bold;
+            white-space: normal;
+        }
+
+        .guru-table td:nth-child(3) {
+            text-align: left;
+        }
+
+        /* Print Editables */
+        .page-container [contenteditable="true"] {
+            outline: none;
+            cursor: text;
+            border-radius: 2px;
+            padding: 2px;
+        }
+
+        .page-container [contenteditable="true"]:hover {
+            background-color: #fef08a;
+        }
+
+        .page-container [contenteditable="true"]:focus {
+            background-color: #fefce8;
+            box-shadow: inset 0 0 0 2px var(--primary);
+        }
+
+        .signature-area {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            /* Padding diperkecil agar sisi kanan bisa lebih mentok ke ujung kertas */
+            padding: 0 15px;
+            color: black;
+        }
+
+        .signature-box {
+            text-align: center;
+            width: 30%;
+        }
+
+        .signature-box p {
+            margin: 2px 0;
+        }
+
+        .signature-box .name {
+            font-weight: bold;
+            margin-top: 60px;
+            border-bottom: 1px solid black;
+            display: inline-block;
+            padding-bottom: 2px;
+        }
+
+        /* Loading & Miscellaneous */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(5px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Cropper */
+        .img-container {
+            width: 100%;
+            height: 350px;
+            overflow: hidden;
+            background: #eee;
+            border-radius: var(--radius-md);
+        }
+
+        .img-container img {
+            max-width: 100%;
+            display: block;
+        }
+
+        @page {
+            size: landscape;
+            margin: 10mm;
+        }
+
+        @media print {
+            body {
+                background: white;
+                height: auto;
+                margin: 0;
+            }
+
+            .sidebar,
+            #admin-sidebar,
+            #guru-sidebar,
+            .login-box,
+            .modal,
+            .mobile-topbar,
+            .sidebar-toggle-btn,
+            .loading-overlay {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+            }
+
+            body.print-admin>*:not(#app-admin),
+            body.print-guru>*:not(#app-guru) {
+                display: none !important;
+            }
+
+            body.print-admin #app-admin>*:not(#admin-content),
+            body.print-guru #app-guru>*:not(#guru-preview-area) {
+                display: none !important;
+            }
+
+            body.print-guru .guru-table-container,
+            body.print-guru h2 {
+                display: none !important;
+            }
+
+            .content-area {
+                padding: 0 !important;
+                margin: 0 !important;
+                background: white !important;
+                display: block !important;
+                overflow: visible !important;
+            }
+
+            .page-container {
+                margin: 0 auto !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                page-break-after: always;
+                page-break-inside: avoid;
+            }
+
+            .page-container:last-child {
+                page-break-after: auto;
+            }
+
+            .page-nav {
+                display: none !important;
+            }
+        }
+
+        .page-nav {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            white-space: nowrap;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(5px);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            position: sticky;
+            top: 10px;
+            z-index: 50;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .page-nav::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .page-nav::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .page-nav button {
+            background: white;
+            border: 1px solid #cbd5e1;
+            color: var(--text-dark);
+            padding: 5px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .mobile-topbar {
+            display: none;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--glass-border);
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow-sm);
+            z-index: 20;
+            width: 100%;
+        }
+
+        .mobile-topbar h1 {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+        }
+
+        @media (max-width: 1024px) {
+
+            #app-guru,
+            #app-admin {
+                flex-direction: column !important;
+            }
+
+            .mobile-topbar {
+                display: flex !important;
+            }
+
+            .desktop-brand,
+            .sidebar-toggle-btn {
+                display: none !important;
+            }
+
+            .sidebar {
+                display: none !important;
+                width: 100% !important;
+                max-height: 50vh !important;
+                border-right: none !important;
+                border-bottom: 1px solid var(--glass-border) !important;
+                padding: 1rem !important;
+                flex-shrink: 0 !important;
+            }
+
+            .sidebar.show {
+                display: flex !important;
+            }
+
+            .content-area {
+                padding: 10px !important;
+            }
+
+            /* Allow page containers to be scrollable horizontally on mobile */
+            .page-container,
+            .page-container.f4 {
+                min-width: 297mm !important;
+                /* Keep original table proportions */
+                transform-origin: top left !important;
+                /* Note: The user can swipe left/right to view the A4/F4 page on mobile */
+            }
+
+            /* For non-print tables */
+            .guru-table-container,
+            .admin-card {
+                padding: 10px !important;
+                width: 100% !important;
+                overflow-x: auto !important;
+            }
+
+            .login-box,
+            .modal-content {
+                padding: 1.5rem !important;
+            }
+        }
+
+        #mobile-zoom-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 9999;
+        }
+
+        #mobile-zoom-controls button {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        #mobile-zoom-controls button:active {
+            transform: scale(0.95);
+        }
+
+        @media (max-width: 1024px) {
+            #mobile-zoom-controls.show-zoom {
+                display: flex;
+            }
+        }
+    </style>
+    <script>
+        function toggleSidebar(type) {
+            const sb = document.getElementById(type + '-sidebar');
+            if (sb) {
+                if (sb.classList.contains('show')) {
+                    sb.classList.remove('show');
+                } else {
+                    sb.classList.add('show');
+                }
+            }
+        }
+
+        function toggleDesktopSidebar(type) {
+            const app = document.getElementById('app-' + type);
+            if (app) {
+                app.classList.toggle('sidebar-collapsed');
+            }
+        }
+
+        // ZOOM LOGIC
+        let currentScale = 1.0;
+        function changeZoom(delta) {
+            currentScale += delta;
+            if (currentScale < 0.3) currentScale = 0.3;
+            if (currentScale > 3.0) currentScale = 3.0;
+            applyZoom();
+        }
+        function resetZoom() {
+            currentScale = 1.0;
+            applyZoom();
+        }
+        function applyZoom() {
+            let containerGuru = document.getElementById('guru-pages-container');
+            let containerAdmin = document.getElementById('admin-a4-container');
+            if (containerGuru) containerGuru.style.zoom = currentScale;
+            if (containerAdmin) containerAdmin.style.zoom = currentScale;
+        }
+    </script>
+</head>
+
+<body>
+
+    <!-- MOBILE ZOOM CONTROLS -->
+    <div id="mobile-zoom-controls">
+        <button onclick="changeZoom(0.1)" title="Perbesar"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+        <button onclick="changeZoom(-0.1)" title="Perkecil"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+        <button onclick="resetZoom()" title="Normal" style="font-size:12px; font-weight:bold;">100%</button>
+    </div>
+
+    <!-- ADMIN MASTER DATA MODAL -->
+    <div id="admin-data-modal" class="modal">
+        <div class="modal-content" style="width: 800px; max-width: 95%; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 id="admin-title">Pilih Menu Data</h2>
+                <button class="btn btn-danger"
+                    onclick="document.getElementById('admin-data-modal').style.display='none'"
+                    style="width: auto; padding: 5px 15px; font-weight: bold;">X Tutup</button>
+            </div>
+            <div id="admin-table-container">Memuat data...</div>
+            <button class="btn btn-success" style="margin-top: 15px; width: 200px; display:none;" id="btn-admin-save"
+                onclick="saveAdminData()">Simpan Perubahan</button>
+        </div>
+    </div>
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen">
+        <div class="login-box">
+            <div id="login-logo-container">
+                <img src="https://lh3.googleusercontent.com/d/1zk8HmAubRXf3NC2_fCV2JsJTphrQCvDr" alt="logo">
+            </div>
+            <h2
+                style="font-size: 1.8rem; background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem; letter-spacing: -0.025em; font-weight: 800; text-align: center;">
+                Buku Nilai Harian</h2>
+            <p style="color: var(--text-light); margin-bottom: 2rem; font-size: 0.95rem; text-align: center;">Selamat
+                datang! Silakan masuk ke akun Anda.</p>
+
+            <div style="text-align: left; margin-bottom: 1.25rem;">
+                <label
+                    style="font-size: 0.8rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.5rem; display: block; letter-spacing: 0.05em; text-transform: uppercase;">Username</label>
+                <div style="position: relative;">
+                    <i class="fa-solid fa-user"
+                        style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-light);"></i>
+                    <input type="text" id="login-username" class="form-control" placeholder="Masukkan username..."
+                        style="padding-left: 45px; margin-bottom: 0; background: #f8fafc; border: 1px solid #e2e8f0;">
+                </div>
+            </div>
+
+            <div style="text-align: left; margin-bottom: 2.5rem;">
+                <label
+                    style="font-size: 0.8rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.5rem; display: block; letter-spacing: 0.05em; text-transform: uppercase;">Password</label>
+                <div style="position: relative;">
+                    <i class="fa-solid fa-lock"
+                        style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-light);"></i>
+                    <input type="password" id="login-pwd" class="form-control" placeholder="Masukkan password..."
+                        style="padding-left: 45px; padding-right: 45px; margin-bottom: 0; background: #f8fafc; border: 1px solid #e2e8f0;"
+                        onkeypress="if(event.key === 'Enter') doLogin()">
+                    <i class="fa-solid fa-eye" id="toggle-pwd" onclick="togglePassword()"
+                        style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: var(--text-light); cursor: pointer; transition: color 0.3s;"></i>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" id="btn-login" onclick="doLogin()"
+                style="width: 100%; padding: 0.875rem; font-size: 1rem; border-radius: var(--radius-md); box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.4);"><i
+                    class="fa-solid fa-right-to-bracket"></i> <span id="btn-login-text">Masuk Sekarang</span></button>
+        </div>
+    </div>
+
+    <!-- ADMIN APP -->
+    <div id="app-admin" style="display: none;">
+        <div class="mobile-topbar">
+            <h1 style="font-size: 1.25rem; margin:0;"><i class="fa-solid fa-server"></i> Admin Panel</h1>
+            <button class="btn btn-outline" style="width:auto; padding:5px 10px; margin:0;"
+                onclick="toggleSidebar('admin')"><i class="fa-solid fa-bars"></i> Menu</button>
+        </div>
+        <div class="sidebar" id="admin-sidebar" style="gap: 0.5rem; padding: 1rem;">
+            <div class="desktop-brand"
+                style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
+                <div class="brand" style="margin-bottom: 0;">
+                    <h1 style="font-size: 1.25rem;"><i class="fa-solid fa-server"></i> Admin Panel</h1>
+                </div>
+                <button class="btn btn-danger" style="width:auto; padding:5px 10px; font-size:0.75rem; margin-bottom:0;"
+                    onclick="doLogout()"><i class="fa-solid fa-power-off"></i></button>
+            </div>
+
+            <div class="control-group" style="padding: 0.75rem;">
+                <h3 style="margin-bottom: 5px; font-size: 0.7rem;">Master Data</h3>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:4px;">
+                    <button class="btn btn-primary" style="padding:6px; font-size:0.7rem; margin-bottom:0;"
+                        onclick="loadAdminSheet('Data_Sekolah')"><i class="fa-solid fa-school"></i> Sekolah</button>
+                    <button class="btn btn-primary" style="padding:6px; font-size:0.7rem; margin-bottom:0;"
+                        onclick="loadAdminSheet('Data_Kelas')"><i class="fa-solid fa-users-class"></i> Kelas</button>
+                    <button class="btn btn-primary" style="padding:6px; font-size:0.7rem; margin-bottom:0;"
+                        onclick="loadAdminSheet('Data_Mapel')"><i class="fa-solid fa-book"></i> Mapel</button>
+                    <button class="btn btn-primary" style="padding:6px; font-size:0.7rem; margin-bottom:0;"
+                        onclick="loadAdminSheet('Data_Guru')"><i class="fa-solid fa-chalkboard-user"></i> Guru</button>
+                    <button class="btn btn-primary" style="padding:6px; font-size:0.7rem; margin-bottom:0;"
+                        onclick="loadAdminSheet('Data_User')"><i class="fa-solid fa-users"></i> Akun</button>
+                    <button class="btn btn-primary" style="padding:6px; font-size:0.7rem; margin-bottom:0;"
+                        onclick="loadAdminSheet('Data_Siswa')"><i class="fa-solid fa-user-graduate"></i> Siswa</button>
+                </div>
+                <button class="btn btn-primary"
+                    style="padding:6px; font-size:0.7rem; margin-bottom:0; margin-top:4px; width:100%;"
+                    onclick="loadAdminSheet('Data_Nilai')"><i class="fa-solid fa-chart-line"></i> Database Nilai
+                    Mentah</button>
+            </div>
+
+            <div class="control-group" style="padding: 0.75rem;">
+                <h3 style="margin-bottom: 5px; font-size: 0.7rem;">Preview & Export PDF</h3>
+                <div style="display:flex; gap:5px; margin-bottom:5px;">
+                    <select id="admin-paper-format" class="form-control"
+                        style="width:35%; padding:5px; margin-bottom:0; font-size:0.7rem;"
+                        onchange="updatePaperFormat()">
+                        <option value="a4">A4</option>
+                        <option value="f4">F4</option>
+                    </select>
+                    <select id="preview-guru-select" class="form-control"
+                        style="width:65%; padding:5px; margin-bottom:0; font-size:0.7rem;"
+                        onchange="generateAdminPreview(true)"></select>
+                </div>
+                <div style="display:flex; gap:5px;">
+                    <button class="btn btn-outline" style="width:50%; padding:6px; font-size:0.7rem; margin-bottom:0;"
+                        onclick="exportAdminPDF()"><i class="fa-solid fa-file-pdf"></i> Download</button>
+                    <button class="btn btn-outline" style="width:50%; padding:6px; font-size:0.7rem; margin-bottom:0;"
+                        onclick="printAdmin()"><i class="fa-solid fa-print"></i> Print</button>
+                </div>
+            </div>
+        </div>
+        <div class="content-area" id="admin-content" style="position: relative;">
+            <div class="loading-overlay" id="admin-loader" style="display:none;">
+                <div class="loader"></div>
+                <p id="admin-loader-text">Memuat...</p>
+            </div>
+
+            <!-- ADMIN LIVE PREVIEW (A4) -->
+            <div id="admin-a4-container"
+                style="display:flex; flex-direction:column; align-items:center; width:100%; transition: opacity 0.3s ease-in-out;">
+                <h2 style="color:#555; margin-top:50px;">Pilih Wali Kelas dan Mata Pelajaran di samping lalu klik
+                    "Tampilkan A4".</h2>
+            </div>
+        </div>
+        <button class="sidebar-toggle-btn" onclick="toggleDesktopSidebar('admin')">
+            <i class="fa-solid fa-chevron-left"></i>
+        </button>
+    </div>
+
+    <!-- GURU APP -->
+    <div id="app-guru" style="display: none;">
+        <div class="mobile-topbar">
+            <h1 style="font-size: 1.25rem; margin:0;"><i class="fa-solid fa-book-open-reader"></i> Nilai Harian</h1>
+            <div style="display:flex; gap:5px;">
+                <button class="btn btn-danger" style="width:auto; padding:5px 10px; font-size:0.75rem; margin:0;"
+                    onclick="doLogout()"><i class="fa-solid fa-power-off"></i></button>
+                <button class="btn btn-outline" style="width:auto; padding:5px 10px; margin:0;"
+                    onclick="toggleSidebar('guru')"><i class="fa-solid fa-bars"></i></button>
+            </div>
+        </div>
+        <div class="sidebar" id="guru-sidebar" style="gap: 0.5rem; padding: 1rem;">
+            <div class="desktop-brand" style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="brand" style="margin-bottom: 0;">
+                    <h1 style="font-size: 1.25rem;"><i class="fa-solid fa-book-open-reader"></i> Nilai Harian</h1>
+                </div>
+                <button class="btn btn-danger" style="width:auto; padding:5px 10px; font-size:0.75rem; margin-bottom:0;"
+                    onclick="doLogout()"><i class="fa-solid fa-power-off"></i></button>
+            </div>
+
+            <div class="control-group" style="padding: 0.75rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div class="profile-info" id="guru-name" style="font-size: 0.85rem; margin-bottom:2px;">Nama
+                            Guru</div>
+                        <div class="profile-class" id="guru-class" style="font-size: 0.75rem; margin-bottom:0;">Wali
+                            Kelas: -</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group" style="padding: 0.75rem;">
+                <h3 style="margin-bottom: 5px; font-size: 0.7rem;">Mata Pelajaran</h3>
+                <div class="mapel-list" id="mapel-list-container"
+                    style="max-height: 1100px; margin-bottom: 5px; font-size: 0.8rem;"></div>
+                <button class="btn btn-primary" style="padding: 6px; font-size: 0.8rem; margin-bottom:0;"
+                    onclick="loadGuruMassalData()"><i class="fa-solid fa-eye"></i> Tampilkan Layar</button>
+            </div>
+
+            <div class="control-group" style="padding: 0.75rem;">
+                <h3 style="margin-bottom: 5px; font-size: 0.7rem;">Editor Excel</h3>
+                <div style="display:flex; gap:5px;">
+                    <button class="btn btn-warning" style="padding: 6px; font-size: 0.75rem; margin-bottom:0;"
+                        onclick="quickAddColumn()"><i class="fa-solid fa-plus"></i> Kolom</button>
+                    <button class="btn btn-danger" style="padding: 6px; font-size: 0.75rem; margin-bottom:0;"
+                        onclick="deleteColumn()"><i class="fa-solid fa-trash"></i> Kolom</button>
+                    <button class="btn btn-success" style="padding: 6px; font-size: 0.75rem; margin-bottom:0;"
+                        onclick="saveGuruData()"><i class="fa-solid fa-cloud-arrow-up"></i> Simpan Data</button>
+                </div>
+            </div>
+
+            <div class="control-group" style="padding: 0.75rem;">
+                <h3 style="margin-bottom: 5px; font-size: 0.7rem;">Export PDF</h3>
+                <div style="display:flex; gap:5px; align-items:center;">
+                    <select id="guru-paper-format" class="form-control"
+                        style="width:40%; padding:5px; margin-bottom:0; font-size:0.75rem;"
+                        onchange="updatePaperFormat()">
+                        <option value="a4">A4</option>
+                        <option value="f4">F4</option>
+                    </select>
+                    <button class="btn btn-outline" style="width:60%; padding:6px; font-size:0.75rem; margin-bottom:0;"
+                        onclick="exportGuruPDF()"><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
+                </div>
+            </div>
+        </div>
+        <div class="content-area" id="guru-preview-area">
+            <div class="loading-overlay" id="guru-loader" style="display:none;">
+                <div class="loader"></div>
+                <p id="guru-loader-text">Memuat...</p>
+            </div>
+            <div id="guru-pages-container" style="display:flex; flex-direction:column; align-items:center; width:100%;">
+                <h2 style="color:#555; margin-top:50px;">Centang mata pelajaran di samping lalu klik "Tampilkan".</h2>
+            </div>
+        </div>
+        <button class="sidebar-toggle-btn" onclick="toggleDesktopSidebar('guru')">
+            <i class="fa-solid fa-chevron-left"></i>
+        </button>
+    </div>
+
+    <!-- CROPPER MODAL -->
+    <div id="cropper-modal" class="modal">
+        <div class="modal-content">
+            <h3 style="color:var(--primary); margin-bottom:0;">Pangkas Logo</h3>
+            <p style="font-size: 12px; color:var(--text-light); margin-bottom: 10px;">Atur area gambar agar pas dan
+                rapi.</p>
+            <div class="img-container">
+                <img id="cropper-image" src="">
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button class="btn btn-outline" style="width:100px;" onclick="closeCropper()">Batal</button>
+                <button class="btn btn-primary" style="width:150px;" id="btn-crop"
+                    onclick="executeCropAndUpload()">Simpan & Upload</button>
+            </div>
+        </div>
+    </div>
+    <input type="file" id="logo-upload-input" accept="image/*" style="display:none;">
+
+    <script>
+        // === GLOBAL STATE ===
+        let sessionUser = null;
+
+        // Admin State
+        let adminCache = {};
+        let currentAdminSheet = '';
+
+        // Guru State
+        let guruDataSekolah = {};
+        let guruMapelList = []; // [ {Kode, Nama} ]
+        let multiMapelData = {}; // { 'Matematika': 2DArray, 'IPA': 2DArray }
+        let activeMapels = [];
+
+        const ROWS_PER_PAGE = 9999;
+
+        // === UTILS ===
+        function showToast(msg, type = "success") {
+            try {
+                let iconType = 'success';
+                if (type === 'error' || type === 'invalid') iconType = 'error';
+                else if (type === 'warning') iconType = 'warning';
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: iconType,
+                    title: msg,
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                    customClass: { container: 'swal2-high-z' }
+                });
+            } catch (e) {
+                if (type === 'error') alert("ERROR: " + msg);
+            }
+        }
+
+        function showErrorAlert(msg) {
+            try {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Peringatan',
+                    text: msg,
+                    confirmButtonColor: 'var(--primary)',
+                    confirmButtonText: 'Tutup',
+                    customClass: { container: 'swal2-high-z' }
+                });
+            } catch (e) {
+                alert("PERINGATAN: " + msg);
+            }
+        }
+        function parseGoogleDriveLink(url) {
+            if (!url) return '';
+            if (url.includes('drive.google.com/file/d/')) {
+                let id = url.split('/d/')[1].split('/')[0];
+                return 'https://lh3.googleusercontent.com/d/' + id;
+            }
+            return url;
+        }
+
+        // === INIT & LOGIN ===
+        window.onload = function () {
+            let sessionStr = localStorage.getItem('simsSession');
+            if (sessionStr) {
+                sessionUser = JSON.parse(sessionStr);
+                document.getElementById('login-screen').style.display = 'none';
+                routeUser();
+            }
+        };
+
+        function togglePassword() {
+            const pwdInput = document.getElementById('login-pwd');
+            const toggleIcon = document.getElementById('toggle-pwd');
+            if (pwdInput.type === 'password') {
+                pwdInput.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+                toggleIcon.style.color = 'var(--primary)';
+            } else {
+                pwdInput.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+                toggleIcon.style.color = 'var(--text-light)';
+            }
+        }
+
+        function doLogin() {
+            const userInp = document.getElementById('login-username');
+            const pwdInp = document.getElementById('login-pwd');
+            const btn = document.getElementById('btn-login');
+            const btnText = document.getElementById('btn-login-text');
+
+            const user = userInp.value.trim();
+            const pwd = pwdInp.value;
+
+            userInp.style.border = '1px solid #e2e8f0';
+            pwdInp.style.border = '1px solid #e2e8f0';
+
+            if (!user) {
+                userInp.style.border = '1px solid red';
+                userInp.focus();
+                return showErrorAlert("Harap isi kolom Username!");
+            }
+            if (!pwd) {
+                pwdInp.style.border = '1px solid red';
+                pwdInp.focus();
+                return showErrorAlert("Harap isi kolom Password!");
+            }
+
+            btnText.innerText = "Memeriksa..."; btn.disabled = true;
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(res => {
+                        if (res.status === 'success') {
+                            let lastUser = localStorage.getItem('lastUser');
+                            if (lastUser && lastUser !== user) {
+                                // Beda user, bersihkan cache secara manual (SPA mode)
+                                adminCache = {};
+                                multiMapelData = {};
+                                guruDataSekolah = {};
+                                guruMapelList = [];
+                                activeMapels = [];
+                                document.getElementById('admin-a4-container').innerHTML = '<h2 style="color:#555; margin-top:50px;">Pilih Wali Kelas dan Mata Pelajaran di samping lalu klik "Tampilkan A4".</h2>';
+                                document.getElementById('guru-pages-container').innerHTML = '<h2 style="color:#555; margin-top:50px;">Centang mata pelajaran di samping lalu klik "Tampilkan".</h2>';
+                            }
+
+                            localStorage.setItem('lastUser', user);
+                            sessionUser = res;
+                            localStorage.setItem('simsSession', JSON.stringify(sessionUser));
+                            btnText.innerText = "Masuk Sekarang"; btn.disabled = false;
+                            document.getElementById('login-screen').style.display = 'none';
+                            routeUser();
+                        } else {
+                            let safeMsg = res.message || "Username atau Password salah!";
+                            if (safeMsg.indexOf("DEBUG GAGAL") !== -1) {
+                                safeMsg = "Username atau Password yang Anda masukkan keliru/tidak terdaftar.";
+                            }
+                            showErrorAlert(safeMsg);
+                            btnText.innerText = "Masuk Sekarang"; btn.disabled = false;
+                        }
+                    })
+                    .withFailureHandler(err => {
+                        showErrorAlert("Koneksi Error: " + err.message);
+                        btnText.innerText = "Masuk Sekarang"; btn.disabled = false;
+                    })
+                    .doLogin(user, pwd);
+            } else {
+                setTimeout(() => {
+                    if (user === 'admin' && pwd === 'admin123') {
+                        sessionUser = { role: 'Admin' };
+                        localStorage.setItem('simsSession', JSON.stringify(sessionUser));
+                        document.getElementById('login-screen').style.display = 'none'; routeUser();
+                    } else if (user === 'guru6a' && pwd === '12345') {
+                        sessionUser = { role: 'Guru', guru: { "Nama Guru": "Siti Aminah, S.Pd.", "NIP Guru": "19850202", "Pangkat Guru": "Penata Muda / III.a", "Wali Kelas": "VI A" } };
+                        localStorage.setItem('simsSession', JSON.stringify(sessionUser));
+                        document.getElementById('login-screen').style.display = 'none'; routeUser();
+                    } else {
+                        showErrorAlert("Kredensial salah! (Mode Offline/Dummy)");
+                        btnText.innerText = "Masuk Sekarang"; btn.disabled = false;
+                    }
+                }, 800);
+            }
+        }
+
+        function doLogout() {
+            Swal.fire({
+                title: 'Konfirmasi Logout',
+                text: 'Apakah Anda yakin ingin keluar dari sistem?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, Keluar!',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    localStorage.removeItem('simsSession');
+                    sessionUser = null;
+                    document.getElementById('app-admin').style.display = 'none';
+                    document.getElementById('app-guru').style.display = 'none';
+                    document.getElementById('login-username').value = '';
+                    document.getElementById('login-pwd').value = '';
+
+                    const btnText = document.getElementById('btn-login-text');
+                    const btn = document.getElementById('btn-login');
+                    if (btnText && btn) {
+                        btnText.innerText = "Masuk Sekarang";
+                        btn.disabled = false;
+                    }
+
+                    document.getElementById('mobile-zoom-controls').classList.remove('show-zoom');
+                    document.getElementById('login-screen').style.display = 'flex';
+                }
+            });
+        }
+
+        function getSelectedGuruClass() {
+            let el = document.getElementById('guru-class-select');
+            if (!el) return sessionUser.guru['Wali Kelas'];
+            return el.value || el.getAttribute('data-val') || sessionUser.guru['Wali Kelas'];
+        }
+
+        function routeUser() {
+            if (sessionUser.role === 'Admin') {
+                document.getElementById('app-admin').style.display = 'flex';
+                fetchAdminData();
+            } else if (sessionUser.role === 'Guru') {
+                document.getElementById('app-guru').style.display = 'flex';
+
+                if (!sessionUser.guru) {
+                    sessionUser.guru = { 'Nama Guru': 'Data Tidak Ditemukan', 'Wali Kelas': '', 'NIP Guru': '' };
+                    showToast("Peringatan: Ref_ID Guru tidak ditemukan di Data_Guru!", "error");
+                }
+
+                document.getElementById('guru-name').innerText = sessionUser.guru['Nama Guru'] || 'Nama Tidak Tersedia';
+                document.getElementById('guru-class').innerText = 'Wali Kelas: ' + (sessionUser.guru['Wali Kelas'] || '-');
+
+                fetchGuruInitData();
+            }
+            document.getElementById('mobile-zoom-controls').classList.add('show-zoom');
+        }
+
+        // ============================================
+        // ADMIN PANEL LOGIC
+        // ============================================
+        function fetchAdminData() {
+            const loader = document.getElementById('admin-loader');
+            loader.style.display = 'flex';
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run.withSuccessHandler(res => {
+                    adminCache = {
+                        'Data_Sekolah': res.sekolah,
+                        'Data_User': res.user,
+                        'Data_Guru': res.guru,
+                        'Data_Mapel': res.mapel,
+                        'Data_Siswa': res.siswa,
+                        'Data_Kelas': res.kelas || [['NO', 'Nama Kelas', 'Fase']],
+                        'Data_Nilai': res.nilai || [['NISN', 'Mapel', 'Kelas', 'Komponen', 'Nilai']]
+                    };
+                    loader.style.display = 'none';
+                    populateAdminDropdowns();
+                }).getAdminData();
+            } else {
+                setTimeout(() => {
+                    adminCache = {
+                        'Data_Sekolah': [
+                            ['Nama Sekolah', 'Logo Kiri URL', 'Logo Kanan URL', 'Folder ID Logo'],
+                            ['SDN Dummy', 'https://via.placeholder.com/80', '', '']
+                        ],
+                        'Data_Mapel': [
+                            ['Kode Mapel', 'Nama Mata Pelajaran'],
+                            ['MAT', 'Matematika'],
+                            ['IPA', 'Ilmu Pengetahuan Alam']
+                        ],
+                        'Data_User': [
+                            ['Username', 'Password', 'Role', 'Ref_ID'],
+                            ['admin', 'admin123', 'Admin', 'admin']
+                        ],
+                        'Data_Guru': [
+                            ['NIP Guru', 'Nama Guru', 'Pangkat Guru', 'Wali Kelas'],
+                            ['19850202', 'Siti Aminah, S.Pd.', 'Penata Muda / III.a', 'VI A']
+                        ],
+                        'Data_Kelas': [
+                            ['NO', 'Nama Kelas', 'Fase'],
+                            [1, 'VI A', 'C']
+                        ]
+                    };
+                    loader.style.display = 'none';
+                    populateAdminDropdowns();
+                }, 800);
+            }
+        }
+
+        function populateAdminDropdowns() {
+            const guruSelect = document.getElementById('preview-guru-select');
+            guruSelect.innerHTML = '<option value="">-- Template Kosong (Edit Kop) --</option>';
+
+            const arrKelas = adminCache['Data_Kelas'] || [];
+            for (let i = 1; i < arrKelas.length; i++) {
+                let namaKelas = arrKelas[i][1];
+                let fase = arrKelas[i][2];
+                guruSelect.innerHTML += `<option value="${namaKelas}">Kelas ${namaKelas || '-'} (Fase ${fase || '-'})</option>`;
+            }
+
+            if (adminCache && adminCache['Data_Sekolah'] && adminCache['Data_Sekolah'].length > 1) {
+                let sHeaders = adminCache['Data_Sekolah'][0];
+                if (sHeaders.indexOf('Instansi 1') === -1) { sHeaders.push('Instansi 1'); adminCache['Data_Sekolah'][1].push('PEMERINTAH KABUPATEN/KOTA'); }
+                if (sHeaders.indexOf('Instansi 2') === -1) { sHeaders.push('Instansi 2'); adminCache['Data_Sekolah'][1].push('DINAS PENDIDIKAN DAN KEBUDAYAAN'); }
+                if (sHeaders.indexOf('NPSN') === -1) { sHeaders.push('NPSN'); adminCache['Data_Sekolah'][1].push('-'); }
+                if (sHeaders.indexOf('Alamat') === -1) { sHeaders.push('Alamat'); adminCache['Data_Sekolah'][1].push('-'); }
+                if (sHeaders.indexOf('Semester') === -1) { sHeaders.push('Semester'); adminCache['Data_Sekolah'][1].push('1 (Ganjil)'); }
+                if (sHeaders.indexOf('Tahun Ajaran') === -1) { sHeaders.push('Tahun Ajaran'); adminCache['Data_Sekolah'][1].push('2023/2024'); }
+                if (sHeaders.indexOf('Email') === -1) { sHeaders.push('Email'); adminCache['Data_Sekolah'][1].push('sekolah@email.com'); }
+                if (sHeaders.indexOf('Kepala Sekolah') === -1) { sHeaders.push('Kepala Sekolah'); adminCache['Data_Sekolah'][1].push('Nama Kepala Sekolah'); }
+                if (sHeaders.indexOf('NIP Kepsek') === -1) { sHeaders.push('NIP Kepsek'); adminCache['Data_Sekolah'][1].push('19700101 199512 1 001'); }
+                if (sHeaders.indexOf('Pangkat Kepsek') === -1) { sHeaders.push('Pangkat Kepsek'); adminCache['Data_Sekolah'][1].push('Pembina Tk.I / IV.b'); }
+                if (sHeaders.indexOf('Lokasi') === -1) { sHeaders.push('Lokasi'); adminCache['Data_Sekolah'][1].push('Jakarta'); }
+            }
+
+            generateAdminPreview(false);
+        }
+
+        function saveKopField(fieldName, value) {
+            if (!adminCache['Data_Sekolah'] || adminCache['Data_Sekolah'].length < 2) return;
+            let headers = adminCache['Data_Sekolah'][0];
+            let idx = headers.indexOf(fieldName);
+            if (idx > -1) {
+                adminCache['Data_Sekolah'][1][idx] = value;
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run.withSuccessHandler(() => {
+                        console.log('Auto-saved: ' + fieldName);
+                    }).saveAdminSheet('Data_Sekolah', adminCache['Data_Sekolah']);
+                }
+            }
+        }
+
+        function updatePaperFormat() {
+            const isGuru = sessionUser && sessionUser.role === 'Guru';
+            const format = isGuru ? document.getElementById('guru-paper-format').value : document.getElementById('admin-paper-format').value;
+            const pages = document.querySelectorAll('.page-container');
+            pages.forEach(p => {
+                if (format === 'f4') p.classList.add('f4');
+                else p.classList.remove('f4');
+            });
+        }
+
+        let currentUploadTargetColIdx = -1;
+        let currentUploadRowIdx = -1;
+        let cropperInstance = null;
+
+        function loadAdminSheet(sheetName) {
+            currentAdminSheet = sheetName;
+            document.getElementById('admin-title').innerText = "Kelola " + sheetName.replace('_', ' ');
+            document.getElementById('btn-admin-save').style.display = 'block';
+            document.getElementById('admin-data-modal').style.display = 'flex';
+
+            const arr2D = adminCache[sheetName] || [];
+            if (arr2D.length === 0) {
+                document.getElementById('admin-table-container').innerHTML = "<p>Data kosong atau belum diinisialisasi. Silakan jalankan initDatabase().</p>";
+                return;
+            }
+
+            const headers = arr2D[0];
+            let html = '<div style="overflow-x:auto;"><table class="admin-table" id="adm-table"><thead><tr>';
+            headers.forEach(h => html += `<th>${h}</th>`);
+            html += '<th>Aksi</th></tr></thead><tbody>';
+
+            const arrKelas = adminCache['Data_Kelas'] ? adminCache['Data_Kelas'].slice(1).map(r => r[1]) : [];
+            const arrNipGuru = adminCache['Data_Guru'] ? adminCache['Data_Guru'].slice(1).map(r => r[0]) : [];
+
+            for (let rIdx = 1; rIdx < arr2D.length; rIdx++) {
+                let row = arr2D[rIdx];
+                html += '<tr>';
+                headers.forEach((h, cIdx) => {
+                    if (sheetName === 'Data_Sekolah' && (h === 'Logo Kiri URL' || h === 'Logo Kanan URL')) {
+                        html += `<td>
+                                    <input type="text" style="width:100%; border:1px solid #ccc; padding:4px;" value="${row[cIdx] || ''}" onblur="updateAdminCache(${rIdx}, ${cIdx}, this.value)">
+                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:11px; margin-top:5px; display:inline-block;" onclick="triggerLogoUpload(${rIdx}, ${cIdx})"><i class="fa-solid fa-upload"></i> Upload Logo</button>
+                                 </td>`;
+                    } else if (h === 'Wali Kelas' || h === 'Kelas') {
+                        let valStr = String(row[cIdx] || '').trim();
+                        let optionsHtml = `<option value="" ${valStr === '' ? 'selected' : ''}>-- Pilih --</option>`;
+                        arrKelas.forEach(k => {
+                            let kStr = String(k || '').trim();
+                            let selected = (valStr === kStr && valStr !== '') ? 'selected' : '';
+                            optionsHtml += `<option value="${kStr}" ${selected}>${kStr}</option>`;
+                        });
+                        html += `<td><select onchange="updateAdminCache(${rIdx}, ${cIdx}, this.value)" style="width:100%; padding:4px; border:1px solid #ccc;">${optionsHtml}</select></td>`;
+                    } else if (h === 'L/P') {
+                        let valStr = String(row[cIdx] || '').trim();
+                        let opts = ['', 'L', 'P'];
+                        let optionsHtml = '';
+                        opts.forEach(o => {
+                            let selected = (valStr === o) ? 'selected' : '';
+                            optionsHtml += `<option value="${o}" ${selected}>${o === '' ? '-- Pilih --' : o}</option>`;
+                        });
+                        html += `<td><select onchange="updateAdminCache(${rIdx}, ${cIdx}, this.value)" style="width:100%; padding:4px; border:1px solid #ccc;">${optionsHtml}</select></td>`;
+                    } else if (h === 'Role') {
+                        let valStr = String(row[cIdx] || '').trim();
+                        let opts = ['', 'Admin', 'Guru'];
+                        let optionsHtml = '';
+                        opts.forEach(o => {
+                            let selected = (valStr === o) ? 'selected' : '';
+                            optionsHtml += `<option value="${o}" ${selected}>${o === '' ? '-- Pilih --' : o}</option>`;
+                        });
+                        html += `<td><select onchange="updateAdminCache(${rIdx}, ${cIdx}, this.value)" style="width:100%; padding:4px; border:1px solid #ccc;">${optionsHtml}</select></td>`;
+                    } else if (h === 'Fase') {
+                        let valStr = String(row[cIdx] || '').trim();
+                        let opts = ['', 'A', 'B', 'C', 'D', 'E', 'F'];
+                        let optionsHtml = '';
+                        opts.forEach(o => {
+                            let selected = (valStr === o) ? 'selected' : '';
+                            optionsHtml += `<option value="${o}" ${selected}>${o === '' ? '-- Pilih --' : o}</option>`;
+                        });
+                        html += `<td><select onchange="updateAdminCache(${rIdx}, ${cIdx}, this.value)" style="width:100%; padding:4px; border:1px solid #ccc;">${optionsHtml}</select></td>`;
+                    } else if (h === 'Ref_ID' && row[headers.indexOf('Role')] === 'Guru') {
+                        let valStr = String(row[cIdx] || '').trim();
+                        let optionsHtml = `<option value="" ${valStr === '' ? 'selected' : ''}>-- Pilih NIP Guru --</option>`;
+                        arrNipGuru.forEach(nip => {
+                            let nipStr = String(nip || '').trim();
+                            let selected = (valStr === nipStr && valStr !== '') ? 'selected' : '';
+                            optionsHtml += `<option value="${nipStr}" ${selected}>${nipStr}</option>`;
+                        });
+                        html += `<td><select onchange="updateAdminCache(${rIdx}, ${cIdx}, this.value)" style="width:100%; padding:4px; border:1px solid #ccc;">${optionsHtml}</select></td>`;
+                    } else if (h === 'Akses_Kelas' && row[headers.indexOf('Role')] === 'Guru') {
+                        let valStr = String(row[cIdx] || '').trim();
+                        let optionsHtml = `<option value="" ${valStr === '' ? 'selected' : ''}>-- Semua Kelas (Bawaan) --</option>`;
+                        arrKelas.forEach(k => {
+                            let kStr = String(k || '').trim();
+                            let selected = (valStr === kStr && valStr !== '') ? 'selected' : '';
+                            optionsHtml += `<option value="${kStr}" ${selected}>${kStr}</option>`;
+                        });
+                        html += `<td><select onchange="updateAdminCache(${rIdx}, ${cIdx}, this.value)" style="width:100%; padding:4px; border:1px solid #ccc;">${optionsHtml}</select></td>`;
+                    } else {
+                        html += `<td contenteditable="true" onblur="updateAdminCache(${rIdx}, ${cIdx}, this.innerText)">${row[cIdx] || ''}</td>`;
+                    }
+                });
+                html += `<td><button onclick="deleteAdminRow(${rIdx})" style="color:red; background:none; border:none; cursor:pointer;"><i class="fa-solid fa-trash"></i></button></td></tr>`;
+            }
+            html += `<tr><td colspan="${headers.length + 1}"><button onclick="addAdminRow()" style="padding:5px; width:100%; cursor:pointer; background:#e5ebf4; border:1px solid #ccc;">+ Tambah Baris Baru</button></td></tr>`;
+            html += '</tbody></table></div>';
+            document.getElementById('admin-table-container').innerHTML = html;
+        }
+
+        function generateAdminPreview(isFade = false) {
+            const wali = document.getElementById('preview-guru-select').value;
+            const container = document.getElementById('admin-a4-container');
+
+            if (!wali) {
+                if (isFade) container.style.opacity = '0';
+                setTimeout(() => {
+                    multiMapelData = {
+                        '': [
+                            ['NO', 'NIS', 'Nama Siswa', 'L/P', 'UH 1', 'UH 2'],
+                            ['', '', '', '', '', ''],
+                            ['', '', '', '', '', '']
+                        ]
+                    };
+                    renderA4Pages('admin-a4-container', '', [''], 'admin_view');
+                    if (isFade) container.style.opacity = '1';
+                }, isFade ? 300 : 0);
+                return;
+            }
+
+            let allMapels = [];
+            if (adminCache && adminCache['Data_Mapel']) {
+                for (let i = 1; i < adminCache['Data_Mapel'].length; i++) {
+                    allMapels.push(adminCache['Data_Mapel'][i][1]);
+                }
+            }
+
+            if (isFade) {
+                container.style.opacity = '0';
+            } else {
+                document.getElementById('admin-loader').style.display = 'flex';
+                document.getElementById('admin-loader-text').innerText = 'Mengambil data dari server...';
+            }
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run.withSuccessHandler(res => {
+                    if (!isFade) document.getElementById('admin-loader').style.display = 'none';
+                    if (res.status === 'success') {
+                        multiMapelData = res.dataMultiMapel;
+                        setTimeout(() => {
+                            renderA4Pages('admin-a4-container', wali, allMapels, 'admin_view');
+                            if (isFade) container.style.opacity = '1';
+                        }, isFade ? 300 : 0);
+                    } else {
+                        showToast(res.message, "error");
+                        if (isFade) container.style.opacity = '1';
+                    }
+                }).withFailureHandler(err => {
+                    if (!isFade) document.getElementById('admin-loader').style.display = 'none';
+                    showToast(err.message, "error");
+                    if (isFade) container.style.opacity = '1';
+                }).getGuruMassalData(wali, allMapels);
+            } else {
+                setTimeout(() => {
+                    if (!isFade) document.getElementById('admin-loader').style.display = 'none';
+                    multiMapelData = {};
+                    allMapels.forEach(m => {
+                        multiMapelData[m] = [
+                            ['NO', 'NIS', 'Nama Siswa', 'L/P', 'UH 1', 'UH 2'],
+                            [1, '1001', 'Budi', 'L', '80', '90']
+                        ];
+                    });
+                    renderA4Pages('admin-a4-container', wali, allMapels, 'admin_view');
+                    if (isFade) container.style.opacity = '1';
+                }, isFade ? 800 : 300);
+            }
+        }
+
+        function renderA4Pages(containerId, wali, mapelList, mode) {
+            const isGuru = mode === 'guru';
+
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            let sek = {};
+            if (adminCache && adminCache['Data_Sekolah'] && adminCache['Data_Sekolah'].length > 1) {
+                let sekHeaders = adminCache['Data_Sekolah'][0];
+                let sekRow = adminCache['Data_Sekolah'][1];
+                if (sekHeaders && sekRow) sekHeaders.forEach((h, i) => sek[h] = sekRow[i]);
+            } else if (guruDataSekolah && Object.keys(guruDataSekolah).length > 0) {
+                // guruDataSekolah is an object returned by getSheetDataAsObject
+                sek = guruDataSekolah;
+            }
+
+            let gr = {};
+            if (adminCache && adminCache['Data_Guru']) {
+                let gh = adminCache['Data_Guru'][0];
+                let waliColIdx = gh.indexOf('Wali Kelas');
+                if (waliColIdx === -1) waliColIdx = gh.length - 1; // Fallback to last column
+
+                for (let i = 1; i < adminCache['Data_Guru'].length; i++) {
+                    let w1 = String(adminCache['Data_Guru'][i][waliColIdx] || '').trim().toLowerCase();
+                    let w2 = String(wali || '').trim().toLowerCase();
+                    if (w1 === w2 && w2 !== '') {
+                        gh.forEach((h, idx) => gr[h] = adminCache['Data_Guru'][i][idx]);
+                        break;
+                    }
+                }
+            } else if (isGuru && sessionUser && sessionUser.guru) {
+                gr = sessionUser.guru;
+            }
+
+            let faseKelas = sek['Fase'] || 'A / B / C / D / E / F';
+            if (!isGuru && adminCache && adminCache['Data_Kelas']) {
+                for (let i = 1; i < adminCache['Data_Kelas'].length; i++) {
+                    if (String(adminCache['Data_Kelas'][i][1]).toLowerCase() === String(wali).toLowerCase()) {
+                        faseKelas = adminCache['Data_Kelas'][i][2] || faseKelas;
+                        break;
+                    }
+                }
+            }
+
+            const logoL = parseGoogleDriveLink(sek['Logo Kiri URL']);
+            const logoR = parseGoogleDriveLink(sek['Logo Kanan URL']);
+
+            const d = new Date();
+            const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            const tglString = d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+            const lokasi = sek['Lokasi'] || 'Jakarta';
+
+            if (mapelList.length > 1) {
+                let navDiv = document.createElement('div');
+                navDiv.className = 'page-nav';
+                navDiv.id = 'dynamic-page-nav';
+                mapelList.forEach((mapel) => {
+                    let safeMapel = (mapel || 'Kosong').replace(/[^a-zA-Z0-9]/g, '');
+                    let btn = document.createElement('button');
+                    btn.innerText = mapel || 'Kosong';
+                    btn.onclick = () => {
+                        let target = document.getElementById(`page-${safeMapel}-0`);
+                        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    };
+                    navDiv.appendChild(btn);
+                });
+                container.appendChild(navDiv);
+            }
+
+            mapelList.forEach((mapel) => {
+                let data = multiMapelData ? multiMapelData[mapel] : [];
+                if (!data || data.length === 0) return;
+
+                let header = data[0];
+                let rows = data.slice(1);
+
+                // Jika tidak ada siswa di kelas tersebut, tampilkan pesan kosong
+                let isEmptyClass = rows.length === 0;
+
+                // Hitung Rata-rata & Ranking secara global untuk kelas ini
+                let rowAverages = [];
+                rows.forEach((row, rRelativeIdx) => {
+                    let total = 0, count = 0;
+                    row.forEach((cell, cIdx) => {
+                        if (cIdx >= 4) {
+                            let num = parseFloat(cell);
+                            if (!isNaN(num)) { total += num; count++; }
+                        }
+                    });
+                    let avg = count > 0 ? total / count : 0;
+                    rowAverages.push({ index: rRelativeIdx, avg: avg });
+                });
+
+                // Urutkan descending untuk mencari ranking
+                let sortedAverages = [...rowAverages].sort((a, b) => b.avg - a.avg);
+                let rankMap = {};
+                let currentRank = 1;
+                for (let i = 0; i < sortedAverages.length; i++) {
+                    if (i > 0 && sortedAverages[i].avg < sortedAverages[i - 1].avg) {
+                        currentRank = i + 1;
+                    }
+                    rankMap[sortedAverages[i].index] = currentRank;
+                }
+
+                let pagesForMapel = Math.ceil(rows.length / ROWS_PER_PAGE);
+                if (pagesForMapel === 0) pagesForMapel = 1;
+
+                for (let i = 0; i < pagesForMapel; i++) {
+                    let start = i * ROWS_PER_PAGE;
+                    let pageRows = rows.slice(start, start + ROWS_PER_PAGE);
+
+                    let thHTML = [];
+                    let hasGrades = header.length > 4;
+
+                    header.forEach((colName, cIdx) => {
+                        const editable = (isGuru && cIdx >= 4) ? 'contenteditable="true" onblur="updateGuruCell(\'' + mapel + '\', 0, ' + cIdx + ', this.innerText, this)"' : '';
+                        thHTML.push('<th ' + editable + '>' + colName + '</th>');
+                    });
+
+                    if (hasGrades) {
+                        thHTML.push('<th style="background:#e8f5e9;">Jumlah</th>');
+                        thHTML.push('<th style="background:#e8f5e9;">Rata-rata</th>');
+                        thHTML.push('<th style="background:#fff8e1;">Ranking</th>');
+                    }
+
+                    let trHTML = [];
+
+                    if (isEmptyClass) {
+                        let colspan = hasGrades ? header.length + 3 : header.length;
+                        trHTML.push('<tr><td colspan="' + colspan + '" style="text-align:center; padding: 20px; font-style: italic;">Siswa masih belum ada</td></tr>');
+                    } else {
+                        pageRows.forEach((row, rRelativeIdx) => {
+                            const rActual = start + rRelativeIdx + 1;
+                            trHTML.push('<tr>');
+                            let total = 0;
+                            let count = 0;
+                            row.forEach((cell, cIdx) => {
+                                let safeMapel = mapel.replace(/\s+/g, '');
+                                let cellId = `cell-${safeMapel}-${rActual}-${cIdx}`;
+                                const editable = (isGuru && cIdx >= 4) ? `id="${cellId}" contenteditable="true" inputmode="numeric" onkeydown="handleGuruCellKey(event, this, '${mapel}', ${rActual}, ${cIdx})" onblur="updateGuruCell('${mapel}', ${rActual}, ${cIdx}, this.innerText, this)"` : '';
+                                trHTML.push('<td ' + editable + '>' + cell + '</td>');
+
+                                if (cIdx >= 4) {
+                                    let num = parseFloat(cell);
+                                    if (!isNaN(num)) {
+                                        total += num;
+                                        count++;
+                                    }
+                                }
+                            });
+
+                            if (hasGrades) {
+                                let avg = count > 0 ? (total / count).toFixed(1) : 0;
+                                let rank = rankMap[start + rRelativeIdx] || '-';
+                                let safeMapel = mapel.replace(/\s+/g, '');
+                                trHTML.push('<td id="total-' + safeMapel + '-' + rActual + '" style="font-weight:bold; background:#f4fdf8; text-align:center;">' + total + '</td>');
+                                trHTML.push('<td id="avg-' + safeMapel + '-' + rActual + '" style="font-weight:bold; background:#f4fdf8; text-align:center;">' + avg + '</td>');
+                                trHTML.push('<td style="font-weight:bold; background:#fff8e1; text-align:center;">' + rank + '</td>');
+                            }
+                            trHTML.push('</tr>');
+                        });
+                    }
+
+                    const editKop = isGuru ? '' : 'contenteditable="true"';
+
+                    let isWaliBlank = !wali;
+                    let mapelDisplay = mapel || '.....................';
+                    let waliDisplay = isWaliBlank ? '.....................' : (gr['Wali Kelas'] || wali);
+                    let guruNameDisplay = isWaliBlank ? '.....................' : (gr['Nama Guru'] || '.....................');
+                    let guruPangkatDisplay = isWaliBlank ? '' : (gr['Pangkat Guru'] || '');
+                    let guruNipDisplay = isWaliBlank ? '.....................' : (gr['NIP Guru'] || '.....................');
+
+                    let htmlArr = [
+                        '<div class="kop-surat">',
+                        '<img src="' + logoL + '" crossorigin="anonymous">',
+                        '<div class="kop-text">',
+                        '<h2 ' + editKop + ' onblur="saveKopField(\'Instansi 1\', this.innerText)">' + (sek['Instansi 1'] || 'PEMERINTAH KABUPATEN/KOTA') + '</h2>',
+                        '<h2 ' + editKop + ' onblur="saveKopField(\'Instansi 2\', this.innerText)">' + (sek['Instansi 2'] || 'DINAS PENDIDIKAN DAN KEBUDAYAAN') + '</h2>',
+                        '<h1 ' + editKop + ' onblur="saveKopField(\'Nama Sekolah\', this.innerText)">' + (sek['Nama Sekolah'] || 'NAMA SEKOLAH') + '</h1>',
+                        '<p ' + editKop + ' onblur="saveKopField(\'Alamat\', this.innerText)">' + (sek['Alamat'] || 'Jalan Pendidikan No. 1') + '</p>',
+                        '<p>NPSN: <span ' + editKop + ' onblur="saveKopField(\'NPSN\', this.innerText)">' + (sek['NPSN'] || '-') + '</span> | Email: <span ' + editKop + ' onblur="saveKopField(\'Email\', this.innerText)">' + (sek['Email'] || 'sekolah@email.com') + '</span></p>',
+                        '</div>',
+                        '<img src="' + logoR + '" crossorigin="anonymous">',
+                        '</div>',
+                        '<div style="border-top: 3px solid #000; margin-bottom: 2px;"></div>',
+                        '<div style="border-top: 1px solid #000; margin-bottom: 15px;"></div>',
+                        '<h3 style="text-align: center; margin-bottom: 15px;">LAPORAN NILAI HARIAN KELAS ' + (isWaliBlank ? '.....................' : String(gr['Wali Kelas'] || wali).toUpperCase()) + '</h3>',
+                        '<div class="info-grid">',
+                        '<div>',
+                        '<div class="info-row"><div class="label">Mata Pelajaran</div><div class="colon">:</div><div>' + mapelDisplay + '</div></div>',
+                        '<div class="info-row"><div class="label">Kelas / Fase</div><div class="colon">:</div><div>' + waliDisplay + ' / ' + faseKelas + '</div></div>',
+                        '</div>',
+                        '<div>',
+                        '<div class="info-row"><div class="label">Semester</div><div class="colon">:</div><div ' + editKop + ' onblur="saveKopField(\'Semester\', this.innerText)">' + (sek['Semester'] || '1 (Ganjil)') + '</div></div>',
+                        '<div class="info-row"><div class="label">Tahun Ajaran</div><div class="colon">:</div><div ' + editKop + ' onblur="saveKopField(\'Tahun Ajaran\', this.innerText)">' + (sek['Tahun Ajaran'] || '2023/2024') + '</div></div>',
+                        '</div>',
+                        '</div>',
+                        '<table class="guru-table">',
+                        '<thead><tr>' + thHTML.join('') + '</tr></thead>',
+                        '<tbody>' + trHTML.join('') + '</tbody>',
+                        '</table>',
+                        '<div class="signature-area">',
+                        '<div class="signature-box" style="text-align:left; width: 33%; font-size: 10px; line-height: 1.3;">',
+                        '<b>Keterangan:</b><br>',
+                        'F : Asesmen Formatif<br>',
+                        'S : Asesmen Sumatif<br>',
+                        'STS : Sumatif Tengah Semester<br>',
+                        'SAS : Sumatif Akhir Semester',
+                        '</div>',
+                        '<div class="signature-box" style="width: 33%;">',
+                        '<p>Mengetahui,</p>',
+                        '<p>Kepala Sekolah</p>',
+                        '<p class="name" ' + editKop + ' onblur="saveKopField(\'Kepala Sekolah\', this.innerText)">' + (sek['Kepala Sekolah'] || '.....................') + '</p>',
+                        '<p ' + editKop + ' onblur="saveKopField(\'Pangkat Kepsek\', this.innerText)">' + (sek['Pangkat Kepsek'] || '') + '</p>',
+                        '<p>NIP. <span ' + editKop + ' onblur="saveKopField(\'NIP Kepsek\', this.innerText)">' + (sek['NIP Kepsek'] || '.....................') + '</span></p>',
+                        '</div>',
+                        '<div class="signature-box">',
+                        '<p><span ' + editKop + ' onblur="saveKopField(\'Lokasi\', this.innerText)">' + lokasi + '</span>, ' + tglString + '</p>',
+                        '<p>Guru Kelas ' + waliDisplay + '</p>',
+                        '<p class="name">' + guruNameDisplay + '</p>',
+                        '<p>' + guruPangkatDisplay + '</p>',
+                        '<p>NIP. ' + guruNipDisplay + '</p>',
+                        '</div>',
+                        '</div>'
+                    ];
+
+                    let div = document.createElement('div');
+                    let safeMapelId = (mapel || 'Kosong').replace(/[^a-zA-Z0-9]/g, '');
+                    div.id = `page-${safeMapelId}-${i}`;
+                    const format = isGuru ? document.getElementById('guru-paper-format').value : document.getElementById('admin-paper-format').value;
+                    div.className = 'page-container' + (format === 'f4' ? ' f4' : '');
+                    div.style.display = 'block';
+                    div.innerHTML = htmlArr.join('');
+                    container.appendChild(div);
+                }
+            });
+        }
+
+
+        function calculatePrintZoom(containerId, isF4) {
+            let container = document.getElementById(containerId);
+            let pages = container.querySelectorAll('.page-container');
+
+            // Beri margin ekstra untuk F4 agar tidak terpotong di Chrome Print
+            let targetH = isF4 ? (215 - 20) * 3.7795 : (210 - 20) * 3.7795;
+            let targetW = isF4 ? (300 - 20) * 3.7795 : (297 - 20) * 3.7795;
+
+            pages.forEach(p => {
+                let curH = p.scrollHeight;
+                let curW = p.scrollWidth;
+
+                let scaleH = targetH / curH;
+                let scaleW = targetW / curW;
+
+                let finalScale = Math.min(scaleH, scaleW);
+                if (finalScale < 1) {
+                    p.style.zoom = finalScale;
+
+                    // Adopsi tampilan PDF: Jika tabel mengecil karena terlalu tinggi, lebarkan secara horizontal
+                    if (scaleH < scaleW) {
+                        p.style.width = (targetW / finalScale) + 'px';
+                        let table = p.querySelector('table');
+                        if (table) table.style.width = '100%';
+                    }
+                }
+            });
+            return pages;
+        }
+
+        function restorePrintZoom(pages) {
+            pages.forEach(p => {
+                p.style.zoom = '';
+                p.style.width = '';
+            });
+        }
+
+        function prepareForPDF(containerId, isF4) {
+            let container = document.getElementById(containerId);
+            
+            // Reset zoom to 1 before capturing to prevent distorted/blurry mobile PDF exports
+            let currentZoomStr = container.style.zoom;
+            container.setAttribute('data-original-zoom', currentZoomStr || '1');
+            container.style.zoom = '1';
+
+            // Paksa container utama menyusut memeluk ukuran kertas agar html2canvas tidak memotret layar monitor penuh
+            container.style.width = 'max-content';
+
+            let pages = container.querySelectorAll('.page-container');
+            let targetH = isF4 ? (215 - 20) * 3.7795 : (210 - 20) * 3.7795;
+            let targetW = isF4 ? (330 - 20) * 3.7795 : (297 - 20) * 3.7795;
+
+            pages.forEach(p => {
+                let wrapper = document.createElement('div');
+                wrapper.className = 'temp-scale-wrapper';
+                wrapper.style.width = 'max-content';
+                wrapper.style.transformOrigin = 'top left';
+
+                while (p.firstChild) {
+                    wrapper.appendChild(p.firstChild);
+                }
+                p.appendChild(wrapper);
+
+                // Set ukuran persis ukuran kertas agar html2pdf bisa memotong secara otomatis (auto-slice)
+                p.style.width = isF4 ? '330mm' : '297mm';
+                p.style.height = isF4 ? '215mm' : '210mm';
+                p.style.overflow = 'hidden';
+                p.style.margin = '0';
+                p.style.boxShadow = 'none';
+                p.style.borderRadius = '0';
+                p.style.pageBreakAfter = 'auto'; // Matikan page-break CSS agar tidak memicu halaman kosong ganda
+                p.style.breakAfter = 'auto';
+
+                let curH = wrapper.scrollHeight;
+                let curW = wrapper.scrollWidth;
+
+                let scaleH = targetH / curH;
+                let scaleW = targetW / curW;
+                let finalScale = Math.min(scaleH, scaleW);
+
+                if (finalScale < 1) {
+                    wrapper.style.transform = `scale(${finalScale})`;
+                    // Jika mengecil karena tinggi (scaleH < scaleW), lebarkan wrapper agar tabel melebar ke kanan kiri penuh
+                    if (scaleH < scaleW) {
+                        wrapper.style.width = (targetW / finalScale) + 'px';
+                        let table = wrapper.querySelector('table');
+                        if (table) table.style.width = '100%';
+                    }
+                }
+            });
+        }
+
+        function restoreFromPDF(containerId) {
+            let container = document.getElementById(containerId);
+            container.style.width = '';
+
+            // Restore user's original zoom level
+            let originalZoom = container.getAttribute('data-original-zoom');
+            if (originalZoom) {
+                container.style.zoom = originalZoom;
+                container.removeAttribute('data-original-zoom');
+            }
+
+            let pages = container.querySelectorAll('.page-container');
+
+            pages.forEach(p => {
+                let wrapper = p.querySelector('.temp-scale-wrapper');
+                if (wrapper) {
+                    while (wrapper.firstChild) {
+                        p.appendChild(wrapper.firstChild);
+                    }
+                    wrapper.remove();
+                }
+
+                p.style.width = '';
+                p.style.height = '';
+                p.style.overflow = '';
+                p.style.margin = '';
+                p.style.boxShadow = '';
+                p.style.borderRadius = '';
+                p.style.pageBreakAfter = '';
+                p.style.breakAfter = '';
+            });
+        }
+
+        function exportAdminPDF() {
+            const wali = document.getElementById('preview-guru-select').value;
+            if (!wali) return showToast("Pilih Wali Kelas untuk Export!", "error");
+
+            let allMapels = [];
+            if (adminCache && adminCache['Data_Mapel']) {
+                for (let i = 1; i < adminCache['Data_Mapel'].length; i++) {
+                    allMapels.push(adminCache['Data_Mapel'][i][1]);
+                }
+            }
+            if (allMapels.length === 0) return showToast("Data Mata Pelajaran kosong!", "error");
+
+            document.getElementById('admin-loader').style.display = 'flex';
+            document.getElementById('admin-loader-text').innerText = 'Mengambil data dari server...';
+
+            let formatStr = document.getElementById('admin-paper-format').value;
+            let format = formatStr === 'f4' ? [215, 330] : 'a4';
+
+            function processPDF() {
+                document.getElementById('admin-loader-text').innerText = 'Mempersiapkan PDF...';
+
+                prepareForPDF('admin-a4-container', formatStr === 'f4');
+
+                let nav = document.getElementById('dynamic-page-nav');
+                if (nav) nav.style.display = 'none';
+
+                const opt = {
+                    margin: 0,
+                    filename: `Buku_Nilai_Massal_${wali}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+                    jsPDF: { unit: 'mm', format: format, orientation: 'landscape' }
+                };
+
+                html2pdf().set(opt).from(document.getElementById('admin-a4-container')).save().then(() => {
+                    restoreFromPDF('admin-a4-container');
+                    if (nav) nav.style.display = 'flex';
+                    document.getElementById('admin-loader').style.display = 'none';
+                    showToast("PDF berhasil di-download!", "success");
+                });
+            }
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run.withSuccessHandler(res => {
+                    if (res.status === 'success') {
+                        multiMapelData = res.dataMultiMapel;
+                        renderA4Pages('admin-a4-container', wali, allMapels, 'admin_export');
+                        processPDF();
+                    } else {
+                        document.getElementById('admin-loader').style.display = 'none';
+                        showToast(res.message, "error");
+                    }
+                }).withFailureHandler(err => {
+                    document.getElementById('admin-loader').style.display = 'none';
+                    showToast(err.message, "error");
+                }).getGuruMassalData(wali, allMapels);
+            } else {
+                setTimeout(() => {
+                    multiMapelData = {};
+                    allMapels.forEach(m => {
+                        multiMapelData[m] = [['NO', 'NIS', 'Nama Siswa', 'L/P', 'UH 1'], [1, '1001', 'Budi', 'L', 100]];
+                    });
+                    renderA4Pages('admin-a4-container', wali, allMapels, 'admin_export');
+                    processPDF();
+                }, 800);
+            }
+        }
+
+        function printAdmin() {
+            const container = document.getElementById('admin-a4-container');
+            if (container.children.length === 0) return showToast("Tampilkan data terlebih dahulu!", "error");
+
+            let isF4 = document.getElementById('admin-paper-format').value === 'f4';
+            let pages = calculatePrintZoom('admin-a4-container', isF4);
+
+            document.body.classList.add('print-admin');
+            window.print();
+
+            setTimeout(() => {
+                document.body.classList.remove('print-admin');
+                restorePrintZoom(pages);
+            }, 500);
+        }
+
+        // --- UPLOAD & CROPPER LOGIC ---
+        function triggerLogoUpload(rIdx, cIdx) {
+            currentUploadRowIdx = rIdx;
+            currentUploadTargetColIdx = cIdx;
+            document.getElementById('logo-upload-input').click();
+        }
+
+        document.getElementById('logo-upload-input').addEventListener('change', function (e) {
+            if (e.target.files && e.target.files.length > 0) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = function (event) {
+                    const img = document.getElementById('cropper-image');
+
+                    console.log("1. Membaca gambar...");
+                    if (cropperInstance) {
+                        try { cropperInstance.destroy(); console.log("Cropper lama dihancurkan."); } catch (err) { }
+                        cropperInstance = null;
+                    }
+
+                    img.onload = null;
+                    document.getElementById('cropper-modal').style.display = 'flex';
+                    img.src = event.target.result;
+
+                    setTimeout(function () {
+                        try {
+                            console.log("2. Menjalankan inisialisasi Cropper...");
+                            if (typeof Cropper === 'undefined') {
+                                throw new Error("Pustaka Cropper.js gagal dimuat dari CDN!");
+                            }
+
+                            const container = document.querySelector('.img-container');
+                            console.log("3. Info Wadah:", container.getBoundingClientRect());
+                            console.log("4. Info Gambar:", img.width, "x", img.height);
+
+                            cropperInstance = new Cropper(img, {
+                                aspectRatio: NaN,
+                                viewMode: 1,
+                                autoCropArea: 1,
+                                ready: function () {
+                                    console.log("5. Cropper SUKSES siap digunakan!");
+                                }
+                            });
+                        } catch (err) {
+                            console.error("GAGAL INIT CROPPER:", err);
+                            alert("Gagal merender alat potong: " + err.message + "\nSilakan cek console (F12).");
+                        }
+                    }, 200);
+                };
+                reader.readAsDataURL(file);
+            }
+            this.value = ''; // Reset input
+        });
+
+        function closeCropper() {
+            document.getElementById('cropper-modal').style.display = 'none';
+            if (cropperInstance) cropperInstance.destroy();
+            cropperInstance = null;
+        }
+
+        function executeCropAndUpload() {
+            if (!cropperInstance) return;
+            const btn = document.getElementById('btn-crop');
+            btn.innerText = "Mengupload..."; btn.disabled = true;
+
+            const canvas = cropperInstance.getCroppedCanvas({ width: 400 });
+            const base64Data = canvas.toDataURL('image/png');
+            // Gunakan nama konstan agar file lama bisa ditimpa (tidak menumpuk)
+            const fileName = currentUploadTargetColIdx === 1 ? "Logo_Kiri.png" : "Logo_Kanan.png";
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run.withSuccessHandler(res => {
+                    if (res.status === 'success') {
+                        adminCache['Data_Sekolah'][currentUploadRowIdx][currentUploadTargetColIdx] = res.url;
+                        loadAdminSheet('Data_Sekolah');
+                        // Auto-save ke spreadsheet agar Guru bisa melihatnya
+                        google.script.run.saveAdminSheet('Data_Sekolah', adminCache['Data_Sekolah']);
+                        showToast("Logo berhasil diupload ke Drive dan otomatis tersimpan!");
+                    } else {
+                        alert("Gagal Upload: " + res.message);
+                    }
+                    closeCropper();
+                    btn.innerText = "Simpan & Upload"; btn.disabled = false;
+                }).uploadLogoToDrive(base64Data, fileName);
+            } else {
+                setTimeout(() => {
+                    adminCache['Data_Sekolah'][currentUploadRowIdx][currentUploadTargetColIdx] = "https://via.placeholder.com/150?text=Local+Upload";
+                    loadAdminSheet('Data_Sekolah');
+                    closeCropper();
+                    btn.innerText = "Simpan & Upload"; btn.disabled = false;
+                    showToast("Simulasi Upload Sukses");
+                }, 1000);
+            }
+        }
+        // -----------------------------
+
+        function updateAdminCache(rIdx, cIdx, val) {
+            adminCache[currentAdminSheet][rIdx][cIdx] = val;
+        }
+
+        function addAdminRow() {
+            let headers = adminCache[currentAdminSheet][0];
+            let newRow = new Array(headers.length).fill('');
+            adminCache[currentAdminSheet].push(newRow);
+            loadAdminSheet(currentAdminSheet);
+        }
+
+        function deleteAdminRow(idx) {
+            adminCache[currentAdminSheet].splice(idx, 1);
+            loadAdminSheet(currentAdminSheet);
+        }
+
+        function saveAdminData() {
+            const loader = document.getElementById('admin-loader');
+            loader.style.display = 'flex'; document.getElementById('admin-loader-text').innerText = "Menyimpan " + currentAdminSheet + "...";
+
+            let array2D = adminCache[currentAdminSheet];
+            if (!array2D || array2D.length === 0) return;
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run.withSuccessHandler(res => {
+                    loader.style.display = 'none'; showToast(res);
+                }).saveAdminSheet(currentAdminSheet, array2D);
+            } else {
+                setTimeout(() => { loader.style.display = 'none'; showToast("Local save success"); }, 800);
+            }
+        }
+
+        // ============================================
+        // GURU PANEL LOGIC (MODE MASSAL)
+        // ============================================
+        function fetchGuruInitData() {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run.withSuccessHandler(res => {
+                    guruDataSekolah = res.sekolah;
+                    guruMapelList = res.mapelList;
+                    renderMapelCheckboxes();
+                }).getInitGuruData(getSelectedGuruClass());
+            } else {
+                // Local
+                guruDataSekolah = { 'Nama Sekolah': 'SDN Local', 'Logo Kiri URL': '', 'Logo Kanan URL': '' };
+                guruMapelList = [{ 'Nama Mata Pelajaran': 'Matematika' }, { 'Nama Mata Pelajaran': 'Ilmu Pengetahuan Alam' }];
+                renderMapelCheckboxes();
+            }
+        }
+
+        function renderMapelCheckboxes() {
+            const container = document.getElementById('mapel-list-container');
+            container.innerHTML = '';
+            guruMapelList.forEach((m, idx) => {
+                let name = m['Nama Mata Pelajaran'];
+                container.innerHTML += `
+                    <label class="mapel-item">
+                        <input type="checkbox" class="mapel-chk" value="${name}" ${idx === 0 ? 'checked' : ''}> ${name}
+                    </label>
+                `;
+            });
+        }
+
+        function loadGuruMassalData() {
+            let chks = document.querySelectorAll('.mapel-chk:checked');
+            activeMapels = Array.from(chks).map(c => c.value);
+            if (activeMapels.length === 0) return showToast("Centang minimal 1 Mata Pelajaran!", "error");
+
+            const loader = document.getElementById('guru-loader');
+            loader.style.display = 'flex'; document.getElementById('guru-loader-text').innerText = "Memuat Mode Massal...";
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run.withSuccessHandler(res => {
+                    multiMapelData = res.dataMultiMapel;
+                    renderGuruPages();
+                    loader.style.display = 'none';
+                }).getGuruMassalData(getSelectedGuruClass(), activeMapels);
+            } else {
+                setTimeout(() => {
+                    multiMapelData = {};
+                    activeMapels.forEach(m => {
+                        multiMapelData[m] = [
+                            ['NO', 'NIS', 'Nama Siswa', 'L/P', 'UH 1'],
+                            [1, '1001', 'Budi', 'L', 80],
+                            [2, '1002', 'Siti', 'P', 90]
+                        ];
+                    });
+                    renderGuruPages();
+                    loader.style.display = 'none';
+                }, 800);
+            }
+        }
+
+        function quickAddColumn() {
+            if (activeMapels.length === 0 || !multiMapelData[activeMapels[0]]) return showToast("Tampilkan data terlebih dahulu.", "warning");
+
+            activeMapels.forEach(mapel => {
+                let data = multiMapelData[mapel];
+                let headers = data[0];
+
+                // Cari angka terbesar dari deret 'F' TERAKHIR saja (sejak ada pemisah)
+                let maxCount = 0;
+
+                // Cari dari belakang, berhenti jika menemukan header yang BUKAN berawalan F
+                for (let i = headers.length - 1; i >= 4; i--) {
+                    // Bersihkan karakter tak kasat mata (zero-width space) dari backend
+                    let text = String(headers[i]).replace(/\u200B/g, '').trim();
+
+                    let match = text.match(/^f\s*(\d+)$/i);
+                    if (match) {
+                        let num = parseInt(match[1]);
+                        if (!isNaN(num) && num > maxCount) maxCount = num;
+                    } else {
+                        // Jika menemukan header BUKAN "F..." (misal "S1", "PTS"), hentikan pencarian!
+                        // Ini yang membuat urutannya terpotong dan bisa kembali ke F1 lagi.
+                        break;
+                    }
+                }
+
+                let newHeader = `F${maxCount + 1}`;
+
+                // Tidak perlu fallback pencegah duplikat di Frontend, karena Backend sekarang
+                // sudah mendukung nama header yang persis sama dengan teknologi Zero-Width Space!
+                data[0].push(newHeader);
+                for (let i = 1; i < data.length; i++) {
+                    data[i].push("");
+                }
+            });
+
+            renderGuruPages(); // Re-render layar
+            showToast("Kolom ditambahkan. Klik teks header untuk mengganti namanya.");
+        }
+
+        function deleteColumn() {
+            if (activeMapels.length === 0 || !multiMapelData[activeMapels[0]]) return showToast("Tampilkan data terlebih dahulu.", "warning");
+
+            let deletedCount = 0;
+
+            activeMapels.forEach(mapel => {
+                let data = multiMapelData[mapel];
+                let headers = data[0];
+
+                if (headers.length > 4) { // pastikan tidak menghapus NO, NISN, Nama, L/P
+                    // Hapus dari header
+                    data[0].pop();
+                    // Hapus dari semua baris nilai
+                    for (let i = 1; i < data.length; i++) {
+                        data[i].pop();
+                    }
+                    deletedCount++;
+                }
+            });
+
+            if (deletedCount > 0) {
+                renderGuruPages();
+                showToast(`Kolom terakhir dihapus.`);
+            } else {
+                showToast(`Tidak ada kolom nilai yang bisa dihapus.`, "warning");
+            }
+        }
+
+        function handleGuruCellKey(e, elm, mapel, rIdx, cIdx) {
+            if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                elm.blur(); // Memicu onblur save otomatis
+                let safeMapel = mapel.replace(/\s+/g, '');
+                let nextElm = document.getElementById(`cell-${safeMapel}-${rIdx + 1}-${cIdx}`);
+                if (nextElm) {
+                    nextElm.focus();
+                    // Optional: select text
+                    let range = document.createRange();
+                    range.selectNodeContents(nextElm);
+                    let sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                elm.blur();
+                let safeMapel = mapel.replace(/\s+/g, '');
+                let prevElm = document.getElementById(`cell-${safeMapel}-${rIdx - 1}-${cIdx}`);
+                if (prevElm) {
+                    prevElm.focus();
+                    let range = document.createRange();
+                    range.selectNodeContents(prevElm);
+                    let sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+            }
+        }
+
+        function updateGuruCell(mapel, rIdx, cIdx, val, elm) {
+            if (rIdx === 0) {
+                // Changing Header
+                multiMapelData[mapel][0][cIdx] = val;
+            } else {
+                // Changing Score
+                let num = parseFloat(val);
+                if (!isNaN(num)) {
+                    if (num > 100 || num < 0) {
+                        showToast("Nilai harus antara 0 - 100! Silakan input ulang.", "warning");
+                        val = ""; // kosongkan
+                        if (elm) elm.innerText = "";
+                    } else {
+                        val = num;
+                        if (elm) elm.innerText = val;
+                    }
+                } else if (val.trim() !== "") {
+                    // if they typed something invalid like letters or dash
+                    showToast("Harap masukkan angka yang valid!", "warning");
+                    val = ""; // kosongkan
+                    if (elm) elm.innerText = "";
+                }
+
+                multiMapelData[mapel][rIdx][cIdx] = val;
+
+                let rowData = multiMapelData[mapel][rIdx];
+                let total = 0;
+                let count = 0;
+                for (let i = 4; i < rowData.length; i++) {
+                    let n = parseFloat(rowData[i]);
+                    if (!isNaN(n)) {
+                        total += n;
+                        count++;
+                    }
+                }
+                let avg = count > 0 ? (total / count).toFixed(1) : 0;
+
+                let safeMapel = mapel.replace(/\s+/g, '');
+                let tdTotal = document.getElementById('total-' + safeMapel + '-' + rIdx);
+                let tdAvg = document.getElementById('avg-' + safeMapel + '-' + rIdx);
+
+                if (tdTotal) tdTotal.innerText = total;
+                if (tdAvg) tdAvg.innerText = avg;
+            }
+        }
+
+        function saveGuruData() {
+            if (activeMapels.length === 0) return;
+            const loader = document.getElementById('guru-loader');
+            loader.style.display = 'flex'; document.getElementById('guru-loader-text').innerText = "Menyimpan Semua Mapel...";
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run.withSuccessHandler(res => {
+                    loader.style.display = 'none'; showToast(res);
+                }).saveGuruMassalData(getSelectedGuruClass(), multiMapelData);
+            } else {
+                setTimeout(() => { loader.style.display = 'none'; showToast("Local save success"); }, 800);
+            }
+        }
+
+        function renderGuruPages() {
+            renderA4Pages('guru-pages-container', getSelectedGuruClass(), activeMapels, 'guru');
+        }
+
+        function exportGuruPDF() {
+            const container = document.getElementById('guru-pages-container');
+            if (container.children.length === 0 || activeMapels.length === 0) return showToast("Tampilkan data terlebih dahulu!", "error");
+
+            let formatStr = document.getElementById('guru-paper-format').value;
+            let format = formatStr === 'f4' ? [215, 330] : 'a4';
+
+            const loader = document.getElementById('guru-loader');
+            loader.style.display = 'flex'; document.getElementById('guru-loader-text').innerText = "Mempersiapkan PDF (Bisa memakan waktu)...";
+
+            prepareForPDF('guru-pages-container', formatStr === 'f4');
+
+            let nav = document.getElementById('dynamic-page-nav');
+            if (nav) nav.style.display = 'none';
+
+            const opt = {
+                margin: 0,
+                filename: `Buku_Nilai_Massal_${getSelectedGuruClass()}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+                jsPDF: { unit: 'mm', format: format, orientation: 'landscape' }
+            };
+
+            html2pdf().set(opt).from(container).save().then(() => {
+                restoreFromPDF('guru-pages-container');
+                if (nav) nav.style.display = 'flex';
+                loader.style.display = 'none';
+                showToast("PDF berhasil di-download!", "success");
+            });
+        }
+
+        function printGuru() {
+            const container = document.getElementById('guru-pages-container');
+            if (container.children.length === 0 || activeMapels.length === 0) return showToast("Tampilkan data terlebih dahulu!", "error");
+
+            let isF4 = document.getElementById('guru-paper-format').value === 'f4';
+            let pages = calculatePrintZoom('guru-pages-container', isF4);
+
+            document.body.classList.add('print-guru');
+            window.print();
+
+            setTimeout(() => {
+                document.body.classList.remove('print-guru');
+                restorePrintZoom(pages);
+            }, 500);
+        }
+    </script>
+</body>
+
+</html>
