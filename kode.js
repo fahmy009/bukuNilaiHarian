@@ -13,8 +13,11 @@ function getScriptUrl() {
 // ==========================================
 // PENGATURAN FOLDER DRIVE
 // ==========================================
-// Masukkan ID Folder Google Drive Anda di bawah ini (opsional jika sudah diset di tabel admin)
-var FOLDER_ID_LOGO = '1VZjIcKcZ2bisoA08e23Z3rHLBYed7o7z'; // Contoh: '1A2b3c4d5e6f7g8h9i0j'
+// Ambil ID Folder Google Drive dari Script Properties
+function getFolderId() {
+  var props = PropertiesService.getScriptProperties();
+  return props.getProperty('FOLDER_ID_LOGO');
+}
 
 // ==========================================
 // FUNGSI PANCINGAN OTORISASI DRIVE
@@ -22,8 +25,9 @@ var FOLDER_ID_LOGO = '1VZjIcKcZ2bisoA08e23Z3rHLBYed7o7z'; // Contoh: '1A2b3c4d5e
 // Jalankan fungsi ini SATU KALI dari editor Apps Script untuk memunculkan pop-up izin Google Drive.
 function otorisasiDrive() {
   try {
-    // Pastikan untuk mengisi FOLDER_ID_LOGO di atas jika ingin tes spesifik folder
-    var folder = FOLDER_ID_LOGO ? DriveApp.getFolderById(FOLDER_ID_LOGO) : DriveApp.getRootFolder();
+    // Pastikan untuk mengisi properti FOLDER_ID_LOGO jika ingin tes spesifik folder
+    var folderId = getFolderId();
+    var folder = folderId ? DriveApp.getFolderById(folderId) : DriveApp.getRootFolder();
     var dummyFile = folder.createFile('Test_Otorisasi.txt', 'Ini adalah file tes untuk memancing izin Google Drive.', MimeType.PLAIN_TEXT);
     Logger.log("Otorisasi berhasil! File tes berhasil dibuat dengan ID: " + dummyFile.getId());
     // Hapus file tes setelah berhasil
@@ -42,7 +46,7 @@ function doLogin(username, password) {
   var dataUser = getSheetDataAsObject(ss, 'Data_User');
 
   var inputUser = String(username).trim().toLowerCase();
-  var inputPwd = String(password).trim(); 
+  var inputPwd = String(password).trim();
 
   Logger.log("Mencoba login: User=" + inputUser + ", Pwd=" + inputPwd);
 
@@ -63,7 +67,7 @@ function doLogin(username, password) {
         var dataGuru = getSheetDataAsObject(ss, 'Data_Guru');
         var profileGuru = null;
         var allClasses = [];
-        
+
         for (var j = 0; j < dataGuru.length; j++) {
           var nipGuru = String(dataGuru[j]['NIP Guru']).trim().toLowerCase();
           var namaGuru = String(dataGuru[j]['Nama Guru']).trim().toLowerCase();
@@ -71,14 +75,14 @@ function doLogin(username, password) {
           // Ref_ID mencocokkan NIP Guru ATAU Nama Guru
           if (nipGuru === refIdLower || namaGuru === refIdLower) {
             Logger.log("Menemukan baris Guru: " + dataGuru[j]['Nama Guru'] + " | NIP: " + dataGuru[j]['NIP Guru']);
-            
+
             // Prioritaskan baris di mana Nama Guru juga mirip dengan Username (untuk membedakan jika NIP sama)
             if (!profileGuru) {
-              profileGuru = dataGuru[j]; 
+              profileGuru = dataGuru[j];
             } else if (namaGuru.indexOf(inputUser) !== -1) {
               profileGuru = dataGuru[j]; // Ganti profil jika nama gurunya mengandung username
             }
-            
+
             // Kumpulkan semua kelas
             var kls = String(dataGuru[j]['Wali Kelas'] || '').trim();
             if (kls) {
@@ -92,40 +96,40 @@ function doLogin(username, password) {
             }
           }
         }
-        
+
         if (profileGuru) {
           Logger.log("Profil Guru Terpilih: " + profileGuru['Nama Guru']);
           var aksesKelasUser = String(dataUser[i]['Akses_Kelas'] || '').trim();
-          var usernameStr = sheetUser; 
-          
+          var usernameStr = sheetUser;
+
           var aksesMapelUser = String(dataUser[i]['Akses_Mapel'] || '').trim();
           if (aksesMapelUser) {
             profileGuru['Akses_Mapel'] = aksesMapelUser;
           }
 
           if (aksesKelasUser) {
-            profileGuru['Wali Kelas'] = aksesKelasUser; 
+            profileGuru['Wali Kelas'] = aksesKelasUser;
           } else {
             // Coba ambil kelas langsung dari baris profil ini saja (1 username 1 kelas sesuai baris guru tsb)
             var currentKls = String(profileGuru['Wali Kelas'] || '').trim();
-            
+
             if (currentKls && currentKls.indexOf(',') === -1) {
-               // Jika hanya ada 1 kelas di baris ini, gunakan ini!
-               // (Tidak digabung dengan kelas dari guru lain yang ber-NIP sama)
+              // Jika hanya ada 1 kelas di baris ini, gunakan ini!
+              // (Tidak digabung dengan kelas dari guru lain yang ber-NIP sama)
             } else {
-               // Fallback: cek kecocokan username dengan nama kelas
-               var matchedClass = null;
-               for (var c = 0; c < allClasses.length; c++) {
-                 if (allClasses[c].toLowerCase() === usernameStr) {
-                   matchedClass = allClasses[c];
-                   break;
-                 }
-               }
-               if (matchedClass) {
-                 profileGuru['Wali Kelas'] = matchedClass;
-               } else {
-                 profileGuru['Wali Kelas'] = currentKls || allClasses.join(', '); 
-               }
+              // Fallback: cek kecocokan username dengan nama kelas
+              var matchedClass = null;
+              for (var c = 0; c < allClasses.length; c++) {
+                if (allClasses[c].toLowerCase() === usernameStr) {
+                  matchedClass = allClasses[c];
+                  break;
+                }
+              }
+              if (matchedClass) {
+                profileGuru['Wali Kelas'] = matchedClass;
+              } else {
+                profileGuru['Wali Kelas'] = currentKls || allClasses.join(', ');
+              }
             }
           }
           return { status: 'success', role: 'Guru', guru: profileGuru };
@@ -136,7 +140,7 @@ function doLogin(username, password) {
       }
     }
   }
-  
+
   Logger.log("Username/Password salah. InputUser: " + inputUser + ", InputPwd: " + inputPwd);
   return { status: 'error', message: 'Username atau Password yang Anda masukkan keliru/tidak terdaftar.' };
 }
@@ -168,10 +172,10 @@ function getInitGuruData(kelas) {
       for (var i = 1; i < users.length; i++) {
         var am = String(users[i][mapelIdx] || '').trim().toLowerCase();
         if (am) {
-           var parts = am.split(',');
-           for (var p = 0; p < parts.length; p++) {
-             exclusiveMapels.push(parts[p].trim());
-           }
+          var parts = am.split(',');
+          for (var p = 0; p < parts.length; p++) {
+            exclusiveMapels.push(parts[p].trim());
+          }
         }
       }
     }
@@ -197,7 +201,7 @@ function getGuruMassalData(kelas, arrayMapel) {
   var activeMapelsOutput = [];
   var babData = {};
 
-  var kelasArr = String(kelas).split(',').map(function(k) { return k.trim(); }).filter(function(k) { return k; });
+  var kelasArr = String(kelas).split(',').map(function (k) { return k.trim(); }).filter(function (k) { return k; });
 
   for (var kIdx = 0; kIdx < kelasArr.length; kIdx++) {
     var kls = kelasArr[kIdx];
@@ -273,7 +277,7 @@ function getGuruMassalData(kelas, arrayMapel) {
         }
         frontendNilai.push(rowArray);
       }
-      
+
       var compositeKey = mapel + '|||' + kls;
       resultData[compositeKey] = frontendNilai;
       activeMapelsOutput.push(compositeKey);
@@ -478,8 +482,9 @@ function uploadLogoToDrive(base64Data, fileName) {
       }
     } catch (e) { }
 
-    // Gunakan FOLDER_ID_LOGO dari kode.js jika di sheet kosong
-    var finalFolderId = sheetFolderId ? sheetFolderId : FOLDER_ID_LOGO;
+    // Gunakan Folder ID dari Script Properties jika di sheet kosong
+    var defaultFolderId = getFolderId();
+    var finalFolderId = sheetFolderId ? sheetFolderId : defaultFolderId;
     var targetFolder;
 
     try {
