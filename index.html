@@ -107,8 +107,7 @@
             z-index: 10000;
         }
 
-        .login-box,
-        .modal-content {
+        .login-box {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(20px);
             padding: 3rem 2.5rem;
@@ -117,6 +116,21 @@
             text-align: center;
             width: 100%;
             max-width: 420px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            animation: popIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .modal-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 1.5rem;
+            border-radius: var(--radius-xl);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            text-align: left;
+            width: 100%;
             border: 1px solid rgba(255, 255, 255, 0.5);
             animation: popIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             display: flex;
@@ -143,6 +157,9 @@
         @media (max-width: 480px) {
             .login-box {
                 padding: 2rem 1.5rem;
+            }
+            .modal-content {
+                padding: 1rem;
             }
             #login-logo-container {
                 width: 80px;
@@ -1005,16 +1022,18 @@
 
     <!-- ADMIN MASTER DATA MODAL -->
     <div id="admin-data-modal" class="modal">
-        <div class="modal-content" style="width: 800px; max-width: 95%; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-content" style="width: max-content; min-width: 600px; max-width: 95vw; max-height: 90vh; overflow-y: auto; overflow-x: hidden;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h2 id="admin-title">Pilih Menu Data</h2>
-                <button class="btn btn-danger"
-                    onclick="document.getElementById('admin-data-modal').style.display='none'"
-                    style="width: auto; padding: 5px 15px; font-weight: bold;">X Tutup</button>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-success" style="width: auto; padding: 5px 15px; font-weight: bold; display:none; margin: 0;" id="btn-admin-save"
+                        onclick="saveAdminData()"><i class="fa-solid fa-floppy-disk"></i> Simpan</button>
+                    <button class="btn btn-danger"
+                        onclick="document.getElementById('admin-data-modal').style.display='none'"
+                        style="width: auto; padding: 5px 15px; font-weight: bold; margin: 0;">X Tutup</button>
+                </div>
             </div>
             <div id="admin-table-container">Memuat data...</div>
-            <button class="btn btn-success" style="margin-top: 15px; width: 200px; display:none;" id="btn-admin-save"
-                onclick="saveAdminData()">Simpan Perubahan</button>
         </div>
     </div>
 
@@ -1084,7 +1103,7 @@
                     <button class="btn btn-primary" style="padding:6px; font-size:0.7rem; margin-bottom:0;"
                         onclick="loadAdminSheet('Data_Sekolah')"><i class="fa-solid fa-school"></i> Sekolah</button>
                     <button class="btn btn-primary" style="padding:6px; font-size:0.7rem; margin-bottom:0;"
-                        onclick="loadAdminSheet('Data_Kelas')"><i class="fa-solid fa-users-class"></i> Kelas</button>
+                        onclick="loadAdminSheet('Data_Kelas')"><i class="fa-solid fa-people-group"></i> Kelas</button>
                     <button class="btn btn-primary" style="padding:6px; font-size:0.7rem; margin-bottom:0;"
                         onclick="loadAdminSheet('Data_Mapel')"><i class="fa-solid fa-book"></i> Mapel</button>
                     <button class="btn btn-primary" style="padding:6px; font-size:0.7rem; margin-bottom:0;"
@@ -1220,7 +1239,7 @@
 
     <!-- CROPPER MODAL -->
     <div id="cropper-modal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 420px; text-align: center;">
             <h3 style="color:var(--primary); margin-bottom:0;">Pangkas Logo</h3>
             <p style="font-size: 12px; color:var(--text-light); margin-bottom: 10px;">Atur area gambar agar pas dan
                 rapi.</p>
@@ -1435,9 +1454,7 @@
         }
 
         function getSelectedGuruClass() {
-            let el = document.getElementById('guru-class-select');
-            if (!el) return sessionUser.guru['Wali Kelas'];
-            return el.value || el.getAttribute('data-val') || sessionUser.guru['Wali Kelas'];
+            return sessionUser.guru['Wali Kelas'] || '';
         }
 
         function routeUser() {
@@ -1453,7 +1470,14 @@
                 }
 
                 document.getElementById('guru-name').innerText = sessionUser.guru['Nama Guru'] || 'Nama Tidak Tersedia';
-                document.getElementById('guru-class').innerText = 'Wali Kelas: ' + (sessionUser.guru['Wali Kelas'] || '-');
+                
+                let isGuruMapel = sessionUser.guru['Akses_Mapel'] ? true : false;
+                if (isGuruMapel) {
+                    let mapelsText = sessionUser.guru['Akses_Mapel'];
+                    document.getElementById('guru-class').innerText = 'Guru Mapel: ' + mapelsText;
+                } else {
+                    document.getElementById('guru-class').innerText = 'Wali Kelas: ' + (sessionUser.guru['Wali Kelas'] || '-');
+                }
 
                 fetchGuruInitData();
             }
@@ -1764,15 +1788,7 @@
                 gr = sessionUser.guru;
             }
 
-            let faseKelas = sek['Fase'] || 'A / B / C / D / E / F';
-            if (!isGuru && adminCache && adminCache['Data_Kelas']) {
-                for (let i = 1; i < adminCache['Data_Kelas'].length; i++) {
-                    if (String(adminCache['Data_Kelas'][i][1]).toLowerCase() === String(wali).toLowerCase()) {
-                        faseKelas = adminCache['Data_Kelas'][i][2] || faseKelas;
-                        break;
-                    }
-                }
-            }
+            let baseFase = sek['Fase'] || 'A / B / C / D / E / F';
 
             const logoL = parseGoogleDriveLink(sek['Logo Kiri URL']);
             const logoR = parseGoogleDriveLink(sek['Logo Kanan URL']);
@@ -1787,9 +1803,14 @@
                 navDiv.className = 'page-nav';
                 navDiv.id = 'dynamic-page-nav';
                 mapelList.forEach((mapel) => {
+                    let btnText = mapel || 'Kosong';
+                    if (mapel.includes('|||')) {
+                        let parts = mapel.split('|||');
+                        btnText = parts[0] + ' Kls ' + parts[1];
+                    }
                     let safeMapel = (mapel || 'Kosong').replace(/[^a-zA-Z0-9]/g, '');
                     let btn = document.createElement('button');
-                    btn.innerText = mapel || 'Kosong';
+                    btn.innerText = btnText;
                     btn.onclick = () => {
                         let target = document.getElementById(`page-${safeMapel}-0`);
                         if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1802,6 +1823,31 @@
             mapelList.forEach((mapel) => {
                 let data = multiMapelData ? multiMapelData[mapel] : [];
                 if (!data || data.length === 0) return;
+
+                let actualMapel = mapel;
+                let actualKelas = wali;
+                if (mapel.includes('|||')) {
+                    let parts = mapel.split('|||');
+                    actualMapel = parts[0];
+                    actualKelas = parts[1];
+                }
+
+                let faseKelas = baseFase;
+                if (isGuru && typeof guruDataKelas !== 'undefined') {
+                    for (let c of guruDataKelas) {
+                        if (String(c['Nama Kelas']).toLowerCase() === String(actualKelas).toLowerCase()) {
+                            faseKelas = c['Fase'] || faseKelas;
+                            break;
+                        }
+                    }
+                } else if (!isGuru && adminCache && adminCache['Data_Kelas']) {
+                    for (let i = 1; i < adminCache['Data_Kelas'].length; i++) {
+                        if (String(adminCache['Data_Kelas'][i][1]).toLowerCase() === String(actualKelas).toLowerCase()) {
+                            faseKelas = adminCache['Data_Kelas'][i][2] || faseKelas;
+                            break;
+                        }
+                    }
+                }
 
                 let header = data[0];
                 let rows = data.slice(1);
@@ -1895,9 +1941,9 @@
 
                     const editKop = isGuru ? '' : 'contenteditable="true"';
 
-                    let isWaliBlank = !wali;
-                    let mapelDisplay = mapel || '.....................';
-                    let waliDisplay = isWaliBlank ? '.....................' : (gr['Wali Kelas'] || wali);
+                    let isWaliBlank = !actualKelas;
+                    let mapelDisplay = actualMapel || '.....................';
+                    let waliDisplay = isWaliBlank ? '.....................' : actualKelas;
                     let guruNameDisplay = isWaliBlank ? '.....................' : (gr['Nama Guru'] || '.....................');
                     let guruPangkatDisplay = isWaliBlank ? '' : (gr['Pangkat Guru'] || '');
                     let guruNipDisplay = isWaliBlank ? '.....................' : (gr['NIP Guru'] || '.....................');
@@ -1916,7 +1962,7 @@
                         '</div>',
                         '<div style="border-top: 3px solid #000; margin-bottom: 2px;"></div>',
                         '<div style="border-top: 1px solid #000; margin-bottom: 15px;"></div>',
-                        '<h3 style="text-align: center; margin-bottom: 15px;">LAPORAN NILAI HARIAN KELAS ' + (isWaliBlank ? '.....................' : String(gr['Wali Kelas'] || wali).toUpperCase()) + '</h3>',
+                        '<h3 style="text-align: center; margin-bottom: 15px;">LAPORAN NILAI HARIAN KELAS ' + (isWaliBlank ? '.....................' : String(actualKelas).toUpperCase()) + '</h3>',
                         '<div class="info-grid">',
                         '<div>',
                         '<div class="info-row"><div class="label">Mata Pelajaran</div><div class="colon">:</div><div>' + mapelDisplay + '</div></div>',
@@ -1948,7 +1994,7 @@
                         '</div>',
                         '<div class="signature-box">',
                         '<p><span ' + editKop + ' onblur="saveKopField(\'Lokasi\', this.innerText)">' + lokasi + '</span>, ' + tglString + '</p>',
-                        '<p>Guru Kelas ' + waliDisplay + '</p>',
+                        '<p>' + (gr && gr['Akses_Mapel'] ? 'Guru ' + actualMapel : 'Guru Kelas ' + waliDisplay) + '</p>',
                         '<p class="name">' + guruNameDisplay + '</p>',
                         '<p>' + guruPangkatDisplay + '</p>',
                         '<p>NIP. ' + guruNipDisplay + '</p>',
@@ -2309,17 +2355,23 @@
         // ============================================
         // GURU PANEL LOGIC (MODE MASSAL)
         // ============================================
+        let exclusiveMapels = [];
+        let guruDataKelas = [];
+        
         function fetchGuruInitData() {
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run.withSuccessHandler(res => {
                     guruDataSekolah = res.sekolah;
                     guruMapelList = res.mapelList;
+                    exclusiveMapels = res.exclusiveMapels || [];
+                    guruDataKelas = res.dataKelas || [];
                     renderMapelCheckboxes();
                 }).getInitGuruData(getSelectedGuruClass());
             } else {
                 // Local
                 guruDataSekolah = { 'Nama Sekolah': 'SDN Local', 'Logo Kiri URL': '', 'Logo Kanan URL': '' };
                 guruMapelList = [{ 'Nama Mata Pelajaran': 'Matematika' }, { 'Nama Mata Pelajaran': 'Ilmu Pengetahuan Alam' }];
+                exclusiveMapels = [];
                 renderMapelCheckboxes();
             }
         }
@@ -2327,7 +2379,31 @@
         function renderMapelCheckboxes() {
             const container = document.getElementById('mapel-list-container');
             container.innerHTML = '';
-            guruMapelList.forEach((m, idx) => {
+            
+            let aksesMapel = (sessionUser && sessionUser.guru) ? sessionUser.guru['Akses_Mapel'] : '';
+            let allowedMapels = [];
+            if (aksesMapel) {
+                allowedMapels = aksesMapel.split(',').map(m => m.trim().toLowerCase());
+            }
+
+            let filteredList = guruMapelList;
+            if (allowedMapels.length > 0) {
+                // Guru Mapel
+                filteredList = guruMapelList.filter(m => {
+                    let name = (m['Nama Mata Pelajaran'] || '').trim().toLowerCase();
+                    let kode = (m['Kode Mapel'] || '').trim().toLowerCase();
+                    return allowedMapels.includes(name) || allowedMapels.includes(kode);
+                });
+            } else {
+                // Wali Kelas (Sembunyikan mapel eksklusif)
+                filteredList = guruMapelList.filter(m => {
+                    let name = (m['Nama Mata Pelajaran'] || '').trim().toLowerCase();
+                    let kode = (m['Kode Mapel'] || '').trim().toLowerCase();
+                    return !exclusiveMapels.includes(name) && !exclusiveMapels.includes(kode);
+                });
+            }
+
+            filteredList.forEach((m, idx) => {
                 let name = m['Nama Mata Pelajaran'];
                 container.innerHTML += `
                     <label class="mapel-item">
@@ -2339,8 +2415,8 @@
 
         function loadGuruMassalData() {
             let chks = document.querySelectorAll('.mapel-chk:checked');
-            activeMapels = Array.from(chks).map(c => c.value);
-            if (activeMapels.length === 0) return showToast("Centang minimal 1 Mata Pelajaran!", "error");
+            let selectedMapels = Array.from(chks).map(c => c.value);
+            if (selectedMapels.length === 0) return showToast("Centang minimal 1 Mata Pelajaran!", "error");
 
             const loader = document.getElementById('guru-loader');
             loader.style.display = 'flex'; document.getElementById('guru-loader-text').innerText = "Memuat Mode Massal...";
@@ -2348,19 +2424,22 @@
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run.withSuccessHandler(res => {
                     multiMapelData = res.dataMultiMapel;
+                    activeMapels = res.activeMapels || [];
                     renderGuruPages();
                     loader.style.display = 'none';
-                }).getGuruMassalData(getSelectedGuruClass(), activeMapels);
+                }).getGuruMassalData(getSelectedGuruClass(), selectedMapels);
             } else {
                 setTimeout(() => {
                     multiMapelData = {};
-                    activeMapels.forEach(m => {
-                        multiMapelData[m] = [
+                    selectedMapels.forEach(m => {
+                        let key = m + '|||LocalClass';
+                        multiMapelData[key] = [
                             ['NO', 'NIS', 'Nama Siswa', 'L/P', 'UH 1'],
                             [1, '1001', 'Budi', 'L', 80],
                             [2, '1002', 'Siti', 'P', 90]
                         ];
                     });
+                    activeMapels = Object.keys(multiMapelData);
                     renderGuruPages();
                     loader.style.display = 'none';
                 }, 800);

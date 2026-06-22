@@ -98,6 +98,11 @@ function doLogin(username, password) {
           var aksesKelasUser = String(dataUser[i]['Akses_Kelas'] || '').trim();
           var usernameStr = sheetUser; 
           
+          var aksesMapelUser = String(dataUser[i]['Akses_Mapel'] || '').trim();
+          if (aksesMapelUser) {
+            profileGuru['Akses_Mapel'] = aksesMapelUser;
+          }
+
           if (aksesKelasUser) {
             profileGuru['Wali Kelas'] = aksesKelasUser; 
           } else {
@@ -154,9 +159,29 @@ function getInitGuruData(kelas) {
     }
   }
 
+  var users = getSheetDataAs2DArray(ss, 'Data_User');
+  var exclusiveMapels = [];
+  if (users && users.length > 1) {
+    var headers = users[0];
+    var mapelIdx = headers.indexOf('Akses_Mapel');
+    if (mapelIdx !== -1) {
+      for (var i = 1; i < users.length; i++) {
+        var am = String(users[i][mapelIdx] || '').trim().toLowerCase();
+        if (am) {
+           var parts = am.split(',');
+           for (var p = 0; p < parts.length; p++) {
+             exclusiveMapels.push(parts[p].trim());
+           }
+        }
+      }
+    }
+  }
+
   return {
     mapelList: mapel,
-    sekolah: objSekolah
+    sekolah: objSekolah,
+    exclusiveMapels: exclusiveMapels,
+    dataKelas: dataKelas
   };
 }
 
@@ -169,74 +194,83 @@ function getGuruMassalData(kelas, arrayMapel) {
   var allNilai = sheetNilai ? sheetNilai.getDataRange().getValues() : [];
 
   var resultData = {};
+  var activeMapelsOutput = [];
 
-  var targetKelas = String(kelas).trim().toLowerCase();
+  var kelasArr = String(kelas).split(',').map(function(k) { return k.trim(); }).filter(function(k) { return k; });
 
-  var siswaRows = [];
-  for (var r = 1; r < allSiswa.length; r++) {
-    if (String(allSiswa[r][4]).trim().toLowerCase() === targetKelas) {
-      siswaRows.push(allSiswa[r]);
+  for (var kIdx = 0; kIdx < kelasArr.length; kIdx++) {
+    var kls = kelasArr[kIdx];
+    var targetKelasLower = kls.toLowerCase();
+
+    var siswaRows = [];
+    for (var r = 1; r < allSiswa.length; r++) {
+      if (String(allSiswa[r][4]).trim().toLowerCase() === targetKelasLower) {
+        siswaRows.push(allSiswa[r]);
+      }
     }
-  }
 
-  var komponenSet = {};
-  var gradeMap = {};
+    var komponenSet = {};
+    var gradeMap = {};
 
-  var lowerArrayMapel = [];
-  for (var m = 0; m < arrayMapel.length; m++) {
-    komponenSet[arrayMapel[m]] = [];
-    lowerArrayMapel.push(String(arrayMapel[m]).trim().toLowerCase());
-  }
+    var lowerArrayMapel = [];
+    for (var m = 0; m < arrayMapel.length; m++) {
+      komponenSet[arrayMapel[m]] = [];
+      lowerArrayMapel.push(String(arrayMapel[m]).trim().toLowerCase());
+    }
 
-  if (allNilai.length > 1) {
-    for (var i = 1; i < allNilai.length; i++) {
-      var nNisn = String(allNilai[i][0]);
-      var nMapel = allNilai[i][1];
-      var nKelas = String(allNilai[i][2]).trim().toLowerCase();
-      var nKomp = allNilai[i][3];
-      var nNilai = allNilai[i][4];
+    if (allNilai.length > 1) {
+      for (var i = 1; i < allNilai.length; i++) {
+        var nNisn = String(allNilai[i][0]);
+        var nMapel = allNilai[i][1];
+        var nKelas = String(allNilai[i][2]).trim().toLowerCase();
+        var nKomp = allNilai[i][3];
+        var nNilai = allNilai[i][4];
 
-      var mapelIdx = lowerArrayMapel.indexOf(String(nMapel).trim().toLowerCase());
-      if (nKelas === targetKelas && mapelIdx !== -1) {
-        var realMapel = arrayMapel[mapelIdx]; // Use the exact case from frontend
-        if (komponenSet[realMapel].indexOf(nKomp) === -1) {
-          komponenSet[realMapel].push(nKomp);
+        var mapelIdx = lowerArrayMapel.indexOf(String(nMapel).trim().toLowerCase());
+        if (nKelas === targetKelasLower && mapelIdx !== -1) {
+          var realMapel = arrayMapel[mapelIdx]; // Use the exact case from frontend
+          if (komponenSet[realMapel].indexOf(nKomp) === -1) {
+            komponenSet[realMapel].push(nKomp);
+          }
+          if (!gradeMap[nNisn]) gradeMap[nNisn] = {};
+          if (!gradeMap[nNisn][realMapel]) gradeMap[nNisn][realMapel] = {};
+          gradeMap[nNisn][realMapel][nKomp] = nNilai;
         }
-        if (!gradeMap[nNisn]) gradeMap[nNisn] = {};
-        if (!gradeMap[nNisn][realMapel]) gradeMap[nNisn][realMapel] = {};
-        gradeMap[nNisn][realMapel][nKomp] = nNilai;
       }
+    }
+
+    for (var m = 0; m < arrayMapel.length; m++) {
+      var mapel = arrayMapel[m];
+      var dynamicCols = komponenSet[mapel];
+      var frontendHeaders = ['NO', 'NISN', 'Nama Siswa', 'L/P'].concat(dynamicCols);
+      var frontendNilai = [frontendHeaders];
+      var noUrut = 1;
+
+      for (var i = 0; i < siswaRows.length; i++) {
+        var sRow = siswaRows[i];
+        var nisn = String(sRow[1]);
+        var rowArray = [
+          noUrut++,
+          nisn,
+          sRow[2],
+          sRow[3]
+        ];
+
+        for (var j = 0; j < dynamicCols.length; j++) {
+          var komp = dynamicCols[j];
+          var val = (gradeMap[nisn] && gradeMap[nisn][mapel] && gradeMap[nisn][mapel][komp] !== undefined) ? gradeMap[nisn][mapel][komp] : '';
+          rowArray.push(val);
+        }
+        frontendNilai.push(rowArray);
+      }
+      
+      var compositeKey = mapel + '|||' + kls;
+      resultData[compositeKey] = frontendNilai;
+      activeMapelsOutput.push(compositeKey);
     }
   }
 
-  for (var m = 0; m < arrayMapel.length; m++) {
-    var mapel = arrayMapel[m];
-    var dynamicCols = komponenSet[mapel];
-    var frontendHeaders = ['NO', 'NISN', 'Nama Siswa', 'L/P'].concat(dynamicCols);
-    var frontendNilai = [frontendHeaders];
-    var noUrut = 1;
-
-    for (var i = 0; i < siswaRows.length; i++) {
-      var sRow = siswaRows[i];
-      var nisn = String(sRow[1]);
-      var rowArray = [
-        noUrut++,
-        nisn,
-        sRow[2],
-        sRow[3]
-      ];
-
-      for (var j = 0; j < dynamicCols.length; j++) {
-        var komp = dynamicCols[j];
-        var val = (gradeMap[nisn] && gradeMap[nisn][mapel] && gradeMap[nisn][mapel][komp] !== undefined) ? gradeMap[nisn][mapel][komp] : '';
-        rowArray.push(val);
-      }
-      frontendNilai.push(rowArray);
-    }
-    resultData[mapel] = frontendNilai;
-  }
-
-  return { status: 'success', dataMultiMapel: resultData };
+  return { status: 'success', dataMultiMapel: resultData, activeMapels: activeMapelsOutput };
 }
 
 function saveGuruMassalData(kelas, mapelData) {
@@ -253,8 +287,13 @@ function saveGuruMassalData(kelas, mapelData) {
   }
 
   var mapelKeys = Object.keys(mapelData);
-  var lowerMapels = mapelKeys.map(function (m) { return String(m).trim().toLowerCase(); });
-  var targetKelasLower = String(kelas).trim().toLowerCase();
+  var activeMapels = [];
+  var activeClasses = [];
+  for (var k = 0; k < mapelKeys.length; k++) {
+    var parts = mapelKeys[k].split('|||');
+    activeMapels.push((parts[0] || mapelKeys[k]).trim().toLowerCase());
+    activeClasses.push((parts[1] || String(kelas)).trim().toLowerCase());
+  }
 
   var newNilai = [allNilai[0]]; // header
 
@@ -263,11 +302,15 @@ function saveGuruMassalData(kelas, mapelData) {
     var rMapel = String(allNilai[i][1]).trim().toLowerCase();
     var rKelas = String(allNilai[i][2]).trim().toLowerCase();
 
-    var isCurrentMapel = lowerMapels.indexOf(rMapel) !== -1;
-    var isCurrentKelas = rKelas === targetKelasLower;
+    var shouldDelete = false;
+    for (var k = 0; k < activeMapels.length; k++) {
+      if (rMapel === activeMapels[k] && rKelas === activeClasses[k]) {
+        shouldDelete = true;
+        break;
+      }
+    }
 
-    // If it's NOT the current mapel OR NOT the current class, keep it!
-    if (!(isCurrentMapel && isCurrentKelas)) {
+    if (!shouldDelete) {
       newNilai.push(allNilai[i]);
     }
   }
@@ -276,8 +319,12 @@ function saveGuruMassalData(kelas, mapelData) {
 
   // 2. Append all new values from mapelData
   for (var m = 0; m < mapelKeys.length; m++) {
-    var mapel = mapelKeys[m];
-    var frontendNilai = mapelData[mapel];
+    var compositeKey = mapelKeys[m];
+    var parts = compositeKey.split('|||');
+    var mapel = parts[0] || compositeKey;
+    var currentKelas = parts.length > 1 ? parts[1] : String(kelas);
+
+    var frontendNilai = mapelData[compositeKey];
     if (!frontendNilai || frontendNilai.length < 1) continue; // Minimal ada header (length 1)
 
     var frontendHeaders = frontendNilai[0];
@@ -305,7 +352,7 @@ function saveGuruMassalData(kelas, mapelData) {
     for (var c = 4; c < frontendHeaders.length; c++) {
       var komp = uniqueHeaders[c];
       if (komp) {
-        newNilai.push(['-', mapel, kelas, komp, '']);
+        newNilai.push(['-', mapel, currentKelas, komp, '']);
         // Tampilkan nama bersih di notifikasi
         var cleanName = komp.replace(/\u200B/g, '');
         if (totalSavedHeaders.indexOf(cleanName) === -1) totalSavedHeaders.push(cleanName);
@@ -323,7 +370,7 @@ function saveGuruMassalData(kelas, mapelData) {
         var val = fRow[c];
 
         if (val !== '' && val !== null && val !== undefined) {
-          newNilai.push([nisn, mapel, kelas, komp, val]);
+          newNilai.push([nisn, mapel, currentKelas, komp, val]);
         }
       }
     }
@@ -354,6 +401,10 @@ function getAdminData() {
     var userHeaders = sheetUser.getRange(1, 1, 1, sheetUser.getLastColumn()).getValues()[0];
     if (userHeaders.indexOf('Akses_Kelas') === -1) {
       sheetUser.getRange(1, userHeaders.length + 1).setValue('Akses_Kelas');
+      userHeaders.push('Akses_Kelas');
+    }
+    if (userHeaders.indexOf('Akses_Mapel') === -1) {
+      sheetUser.getRange(1, userHeaders.length + 1).setValue('Akses_Mapel');
     }
   }
 
@@ -533,9 +584,9 @@ function initDatabase() {
 
   // 2. Data User (Login System)
   var sheetUser = createOrClearSheet(ss, 'Data_User');
-  sheetUser.appendRow(['Username', 'Password', 'Role', 'Ref_ID', 'Akses_Kelas']);
-  sheetUser.appendRow(['admin', 'admin123', 'Admin', 'admin', '']);
-  sheetUser.appendRow(['1', '1', 'Guru', '198603142019032011', '1']); // Akses Kelas = 1
+  sheetUser.appendRow(['Username', 'Password', 'Role', 'Ref_ID', 'Akses_Kelas', 'Akses_Mapel']);
+  sheetUser.appendRow(['admin', 'admin123', 'Admin', 'admin', '', '']);
+  sheetUser.appendRow(['1', '1', 'Guru', '198603142019032011', '1', '']); // Akses Kelas = 1, Akses Mapel = Kosong
 
   // 3. Data Guru
   var sheetGuru = createOrClearSheet(ss, 'Data_Guru');
