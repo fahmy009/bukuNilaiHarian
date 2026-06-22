@@ -757,6 +757,9 @@
         }
 
         @media print {
+            .ranking-col {
+                display: none !important;
+            }
             body {
                 background: white;
                 height: auto;
@@ -818,21 +821,32 @@
         }
 
         .page-nav {
+            position: fixed;
+            top: 80px;
+            right: 30px;
             display: flex;
-            gap: 8px;
-            margin-bottom: 20px;
-            overflow-x: auto;
-            white-space: nowrap;
-            padding: 10px;
+            flex-direction: column;
+            gap: 5px;
+            z-index: 1000;
             background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(5px);
+            padding: 10px;
             border-radius: var(--radius-md);
-            box-shadow: var(--shadow-sm);
-            position: sticky;
-            top: 10px;
-            z-index: 50;
-            width: 100%;
-            max-width: 1000px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+        }
+
+        @media (max-width: 768px) {
+            .page-nav {
+                position: static;
+                flex-direction: row;
+                flex-wrap: wrap;
+                margin-bottom: 20px;
+                box-shadow: none;
+                background: transparent;
+                border: none;
+            }
         }
 
         .page-nav::-webkit-scrollbar {
@@ -1199,12 +1213,16 @@
 
             <div class="control-group" style="padding: 0.75rem;">
                 <h3 style="margin-bottom: 5px; font-size: 0.7rem;">Editor Excel</h3>
-                <div style="display:flex; gap:5px;">
-                    <button class="btn btn-warning" style="padding: 6px; font-size: 0.75rem; margin-bottom:0;"
-                        onclick="quickAddColumn()"><i class="fa-solid fa-plus"></i> Kolom</button>
-                    <button class="btn btn-danger" style="padding: 6px; font-size: 0.75rem; margin-bottom:0;"
-                        onclick="deleteColumn()"><i class="fa-solid fa-trash"></i> Kolom</button>
-                    <button class="btn btn-success" style="padding: 6px; font-size: 0.75rem; margin-bottom:0;"
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:4px; margin-bottom: 5px;">
+                    <button class="btn btn-warning" style="padding: 6px; font-size: 0.7rem; margin-bottom:0;"
+                        onclick="quickAddColumn('F')" title="Tambah Kolom Formatif"><i class="fa-solid fa-plus"></i> Kolom (F)</button>
+                    <button class="btn btn-warning" style="padding: 6px; font-size: 0.7rem; margin-bottom:0;"
+                        onclick="quickAddColumn('S')" title="Tambah Kolom Sumatif (Penutup Bab)"><i class="fa-solid fa-plus"></i> Kolom (S)</button>
+                </div>
+                <div style="display:flex; gap:4px;">
+                    <button class="btn btn-danger" style="padding: 6px; font-size: 0.7rem; margin-bottom:0; flex: 1;"
+                        onclick="deleteColumn()"><i class="fa-solid fa-trash"></i> Hapus Kolom</button>
+                    <button class="btn btn-success" style="padding: 6px; font-size: 0.7rem; margin-bottom:0; flex: 1;"
                         onclick="saveGuruData()"><i class="fa-solid fa-cloud-arrow-up"></i> Simpan Data</button>
                 </div>
             </div>
@@ -1267,7 +1285,8 @@
         let guruDataSekolah = {};
         let guruMapelList = []; // [ {Kode, Nama} ]
         let multiMapelData = {}; // { 'Matematika': 2DArray, 'IPA': 2DArray }
-        let activeMapels = [];
+        let multiMapelBab = {}; // { 'Matematika|||Kelas': { 'S1': 'Bab 1' } }
+        let activeMapels = []; // list of Mapel|||Kelas string active on screen
 
         const ROWS_PER_PAGE = 9999;
 
@@ -1725,8 +1744,10 @@
                     if (!isFade) document.getElementById('admin-loader').style.display = 'none';
                     if (res.status === 'success') {
                         multiMapelData = res.dataMultiMapel;
+                        let keys = Object.keys(multiMapelData);
+                        if(keys.length === 0) keys = allMapels;
                         setTimeout(() => {
-                            renderA4Pages('admin-a4-container', wali, allMapels, 'admin_view');
+                            renderA4Pages('admin-a4-container', wali, keys, 'admin_view');
                             if (isFade) container.style.opacity = '1';
                         }, isFade ? 300 : 0);
                     } else {
@@ -1770,23 +1791,7 @@
                 sek = guruDataSekolah;
             }
 
-            let gr = {};
-            if (adminCache && adminCache['Data_Guru']) {
-                let gh = adminCache['Data_Guru'][0];
-                let waliColIdx = gh.indexOf('Wali Kelas');
-                if (waliColIdx === -1) waliColIdx = gh.length - 1; // Fallback to last column
 
-                for (let i = 1; i < adminCache['Data_Guru'].length; i++) {
-                    let w1 = String(adminCache['Data_Guru'][i][waliColIdx] || '').trim().toLowerCase();
-                    let w2 = String(wali || '').trim().toLowerCase();
-                    if (w1 === w2 && w2 !== '') {
-                        gh.forEach((h, idx) => gr[h] = adminCache['Data_Guru'][i][idx]);
-                        break;
-                    }
-                }
-            } else if (isGuru && sessionUser && sessionUser.guru) {
-                gr = sessionUser.guru;
-            }
 
             let baseFase = sek['Fase'] || 'A / B / C / D / E / F';
 
@@ -1798,18 +1803,40 @@
             const tglString = d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
             const lokasi = sek['Lokasi'] || 'Jakarta';
 
-            if (mapelList.length > 1) {
+            if (mapelList.length > 0) {
                 let navDiv = document.createElement('div');
                 navDiv.className = 'page-nav';
                 navDiv.id = 'dynamic-page-nav';
                 mapelList.forEach((mapel) => {
-                    let btnText = mapel || 'Kosong';
-                    if (mapel.includes('|||')) {
-                        let parts = mapel.split('|||');
-                        btnText = parts[0] + ' Kls ' + parts[1];
+                    let actualMapel = mapel.includes('|||') ? mapel.split('|||')[0] : mapel;
+
+                    let kodeMapel = actualMapel;
+                    if (adminCache && adminCache['Data_Mapel']) {
+                        for (let i = 1; i < adminCache['Data_Mapel'].length; i++) {
+                            let nama = String(adminCache['Data_Mapel'][i][1] || '').trim();
+                            let kode = String(adminCache['Data_Mapel'][i][0] || '').trim();
+                            if (nama.toLowerCase() === actualMapel.toLowerCase()) {
+                                kodeMapel = kode;
+                                break;
+                            }
+                        }
+                    } else if (typeof guruMapelList !== 'undefined') {
+                        let m = guruMapelList.find(x => String(x['Nama Mata Pelajaran']).toLowerCase() === actualMapel.toLowerCase());
+                        if (m) kodeMapel = m['Kode Mapel'];
                     }
+                    
+                    let btnText = kodeMapel || 'Kosong';
+                    if (isGuru && sessionUser && sessionUser.guru && sessionUser.guru['Akses_Mapel'] && mapel.includes('|||')) {
+                        let klsPart = mapel.split('|||')[1];
+                        if (klsPart) btnText += ' - ' + klsPart;
+                    }
+
                     let safeMapel = (mapel || 'Kosong').replace(/[^a-zA-Z0-9]/g, '');
                     let btn = document.createElement('button');
+                    btn.className = 'btn btn-outline';
+                    btn.style.margin = '0';
+                    btn.style.fontSize = '12px';
+                    btn.style.padding = '5px 10px';
                     btn.innerText = btnText;
                     btn.onclick = () => {
                         let target = document.getElementById(`page-${safeMapel}-0`);
@@ -1849,8 +1876,126 @@
                     }
                 }
 
+                let currentGuruData = {};
+                let isGuruMapel = false;
+
+                if (isGuru && sessionUser && sessionUser.guru) {
+                    currentGuruData = sessionUser.guru;
+                    isGuruMapel = !!sessionUser.guru['Akses_Mapel'];
+                } else if (adminCache && adminCache['Data_Guru']) {
+                    let gh = adminCache['Data_Guru'][0];
+                    let waliColIdx = gh.indexOf('Wali Kelas');
+                    if (waliColIdx === -1) waliColIdx = gh.length - 1;
+                    
+                    let guruWali = null;
+                    let guruMapelObj = null;
+
+                    let targetKelas = String(actualKelas || '').trim().toLowerCase();
+                    let targetMapel = String(actualMapel || '').trim().toLowerCase();
+
+                    let targetKodeMapel = targetMapel;
+                    if (adminCache && adminCache['Data_Mapel']) {
+                        for (let i = 1; i < adminCache['Data_Mapel'].length; i++) {
+                            let nama = String(adminCache['Data_Mapel'][i][1] || '').trim().toLowerCase();
+                            let kode = String(adminCache['Data_Mapel'][i][0] || '').trim().toLowerCase();
+                            if (nama === targetMapel) {
+                                targetKodeMapel = kode;
+                                break;
+                            }
+                        }
+                    } else if (typeof guruMapelList !== 'undefined') {
+                        let m = guruMapelList.find(x => String(x['Nama Mata Pelajaran']).trim().toLowerCase() === targetMapel);
+                        if (m) targetKodeMapel = String(m['Kode Mapel']).trim().toLowerCase();
+                    }
+
+                    for (let i = 1; i < adminCache['Data_Guru'].length; i++) {
+                        let wKls = String(adminCache['Data_Guru'][i][waliColIdx] || '').trim().toLowerCase();
+                        if (wKls === targetKelas && targetKelas !== '') {
+                            if (!guruWali) {
+                                guruWali = {};
+                                gh.forEach((h, idx) => guruWali[h] = adminCache['Data_Guru'][i][idx]);
+                            }
+                        }
+                    }
+
+                    if (adminCache['Data_User']) {
+                        let uh = adminCache['Data_User'][0];
+                        let roleIdx = uh.indexOf('Role');
+                        let refIdx = uh.indexOf('Ref_ID');
+                        let akIdx = uh.indexOf('Akses_Kelas');
+                        let amIdx = uh.indexOf('Akses_Mapel');
+
+                        if (roleIdx !== -1 && refIdx !== -1 && amIdx !== -1) {
+                            for (let u = 1; u < adminCache['Data_User'].length; u++) {
+                                let role = String(adminCache['Data_User'][u][roleIdx] || '').trim();
+                                if (role !== 'Guru') continue;
+
+                                let aMapel = String(adminCache['Data_User'][u][amIdx] || '').trim().toLowerCase();
+                                let aKls = akIdx !== -1 ? String(adminCache['Data_User'][u][akIdx] || '').trim().toLowerCase() : '';
+                                
+                                let aMapelsArr = aMapel.split(',').map(s => s.trim()).filter(s => s !== '');
+                                let matchMapel = false;
+                                for (let p of aMapelsArr) {
+                                    if (targetMapel.includes(p) || p.includes(targetMapel) || targetKodeMapel.includes(p) || p.includes(targetKodeMapel)) {
+                                        matchMapel = true;
+                                        break;
+                                    }
+                                }
+
+                                if (matchMapel) {
+                                    let aKlsArr = aKls.split(',').map(s => s.trim()).filter(s => s !== '');
+                                    let matchKelas = (aKlsArr.length === 0);
+                                    for (let p of aKlsArr) {
+                                        if (targetKelas === p || targetKelas.includes(p) || p.includes(targetKelas)) {
+                                            matchKelas = true;
+                                            break;
+                                        }
+                                    }
+
+                                    if (matchKelas) {
+                                        let refId = String(adminCache['Data_User'][u][refIdx] || '').trim().toLowerCase();
+                                        let nipIdx = gh.indexOf('NIP Guru');
+                                        let namaIdx = gh.indexOf('Nama Guru');
+
+                                        for (let i = 1; i < adminCache['Data_Guru'].length; i++) {
+                                            let nip = nipIdx !== -1 ? String(adminCache['Data_Guru'][i][nipIdx] || '').trim().toLowerCase() : '';
+                                            let nama = namaIdx !== -1 ? String(adminCache['Data_Guru'][i][namaIdx] || '').trim().toLowerCase() : '';
+                                            if (nip === refId || nama === refId) {
+                                                guruMapelObj = {};
+                                                gh.forEach((h, idx) => guruMapelObj[h] = adminCache['Data_Guru'][i][idx]);
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                                if (guruMapelObj) break;
+                            }
+                        }
+                    }
+
+                    if (guruMapelObj) {
+                        currentGuruData = guruMapelObj;
+                        isGuruMapel = true;
+                    } else if (guruWali) {
+                        currentGuruData = guruWali;
+                    }
+                }
+
+                let totalRows = data.length - 1;
                 let header = data[0];
                 let rows = data.slice(1);
+
+                // Ensure STS and SAS exist
+                if (header.length > 4) {
+                    if (!header.includes('STS')) {
+                        header.push('STS');
+                        rows.forEach((r, i) => data[i+1].push(''));
+                    }
+                    if (!header.includes('SAS')) {
+                        header.push('SAS');
+                        rows.forEach((r, i) => data[i+1].push(''));
+                    }
+                }
 
                 // Jika tidak ada siswa di kelas tersebut, tampilkan pesan kosong
                 let isEmptyClass = rows.length === 0;
@@ -1858,15 +2003,29 @@
                 // Hitung Rata-rata & Ranking secara global untuk kelas ini
                 let rowAverages = [];
                 rows.forEach((row, rRelativeIdx) => {
-                    let total = 0, count = 0;
+                    let totalS = 0, countS = 0;
+                    let valSTS = null, valSAS = null;
+
                     row.forEach((cell, cIdx) => {
                         if (cIdx >= 4) {
+                            let colName = String(header[cIdx]).trim().toUpperCase();
                             let num = parseFloat(cell);
-                            if (!isNaN(num)) { total += num; count++; }
+                            if (!isNaN(num)) {
+                                if (colName === 'STS') valSTS = num;
+                                else if (colName === 'SAS') valSAS = num;
+                                else if (colName.startsWith('S')) { totalS += num; countS++; }
+                            }
                         }
                     });
-                    let avg = count > 0 ? total / count : 0;
-                    rowAverages.push({ index: rRelativeIdx, avg: avg });
+                    
+                    let NS = countS > 0 ? totalS / countS : 0;
+                    let totalNR = NS;
+                    let countNR = 1;
+                    if (valSTS !== null) { totalNR += valSTS; countNR++; }
+                    if (valSAS !== null) { totalNR += valSAS; countNR++; }
+                    
+                    let NR = totalNR / countNR;
+                    rowAverages.push({ index: rRelativeIdx, avg: NR });
                 });
 
                 // Urutkan descending untuk mencari ranking
@@ -1890,15 +2049,74 @@
                     let thHTML = [];
                     let hasGrades = header.length > 4;
 
-                    header.forEach((colName, cIdx) => {
-                        const editable = (isGuru && cIdx >= 4) ? 'contenteditable="true" onblur="updateGuruCell(\'' + mapel + '\', 0, ' + cIdx + ', this.innerText, this)"' : '';
-                        thHTML.push('<th ' + editable + '>' + colName + '</th>');
-                    });
+                    let thBabRow = ['<th rowspan="2">NO</th>', '<th rowspan="2">NISN</th>', '<th rowspan="2">Nama Siswa</th>', '<th rowspan="2">L/P</th>'];
+                    let thColRow = [];
 
                     if (hasGrades) {
-                        thHTML.push('<th style="background:#e8f5e9;">Jumlah</th>');
-                        thHTML.push('<th style="background:#e8f5e9;">Rata-rata</th>');
-                        thHTML.push('<th style="background:#fff8e1;">Ranking</th>');
+                        let groups = [];
+                        let currentGroup = [];
+                        for (let c = 4; c < header.length; c++) {
+                            let upName = String(header[c]).trim().toUpperCase();
+                            if (upName === 'STS' || upName === 'SAS') continue; // Skip here, manual insertion later
+
+                            currentGroup.push({ colName: header[c], origIdx: c });
+                            if (upName.startsWith('S') && upName !== 'STS' && upName !== 'SAS') {
+                                groups.push({ type: 'bab', cols: currentGroup, closer: header[c] });
+                                currentGroup = [];
+                            }
+                        }
+                        if (currentGroup.length > 0) {
+                            groups.push({ type: 'trailing', cols: currentGroup });
+                        }
+
+                        let compositeKey = actualMapel + '|||' + actualKelas;
+                        groups.forEach((grp, gIdx) => {
+                            if (grp.type === 'bab') {
+                                let defBab = 'Bab ' + (gIdx + 1);
+                                let babName = (multiMapelBab[compositeKey] && multiMapelBab[compositeKey][grp.closer]) ? multiMapelBab[compositeKey][grp.closer] : defBab;
+                                let editAttr = isGuru ? `contenteditable="true" onblur="updateBabName('${compositeKey}', '${grp.closer}', this.innerText)"` : '';
+                                thBabRow.push(`<th colspan="${grp.cols.length}" style="background:#f0f9ff; color:var(--primary);" ${editAttr}>${babName}</th>`);
+                            } else {
+                                thBabRow.push(`<th colspan="${grp.cols.length}" style="background:#f8fafc; color:#555;">Lainnya</th>`);
+                            }
+
+                            grp.cols.forEach(c => {
+                                const editable = isGuru ? `contenteditable="true" onblur="updateGuruCell('${mapel}', 0, ${c.origIdx}, this.innerText, this)"` : '';
+                                thColRow.push(`<th ${editable}>${c.colName}</th>`);
+                            });
+                        });
+
+                        thBabRow.push('<th rowspan="2" style="background:#e8f5e9; padding:0 10px; line-height: 1.2;">NS</th>');
+
+                        let stsOrigIdx = header.indexOf('STS');
+                        let sasOrigIdx = header.indexOf('SAS');
+                        
+                        let addedCols = 0;
+                        if (stsOrigIdx !== -1) { 
+                            let stsEdit = isGuru ? `contenteditable="true" onblur="updateGuruCell('${mapel}', 0, ${stsOrigIdx}, this.innerText, this)"` : '';
+                            thColRow.push(`<th ${stsEdit}>STS</th>`); 
+                            addedCols++; 
+                        }
+                        if (sasOrigIdx !== -1) { 
+                            let sasEdit = isGuru ? `contenteditable="true" onblur="updateGuruCell('${mapel}', 0, ${sasOrigIdx}, this.innerText, this)"` : '';
+                            thColRow.push(`<th ${sasEdit}>SAS</th>`); 
+                            addedCols++; 
+                        }
+                        if (addedCols > 0) {
+                            thBabRow.push(`<th colspan="${addedCols}" style="background:#f8fafc; color:#555;">Sumatif Akhir</th>`);
+                        }
+
+                        thBabRow.push('<th rowspan="2" style="background:#e8f5e9; padding:0 10px; line-height: 1.2;">NR</th>');
+                        thBabRow.push('<th rowspan="2" class="ranking-col" style="background:#fff8e1;">Ranking</th>');
+                    } else {
+                        thBabRow = ['<th>NO</th>', '<th>NISN</th>', '<th>Nama Siswa</th>', '<th>L/P</th>'];
+                    }
+
+                    if (hasGrades) {
+                        thHTML.push('<tr>' + thBabRow.join('') + '</tr>');
+                        thHTML.push('<tr>' + thColRow.join('') + '</tr>');
+                    } else {
+                        thHTML.push('<tr>' + thBabRow.join('') + '</tr>');
                     }
 
                     let trHTML = [];
@@ -1910,30 +2128,62 @@
                         pageRows.forEach((row, rRelativeIdx) => {
                             const rActual = start + rRelativeIdx + 1;
                             trHTML.push('<tr>');
-                            let total = 0;
-                            let count = 0;
+                            let totalS = 0, countS = 0;
+                            let valSTS = null, valSAS = null;
+                            let stsOrigIdx = header.indexOf('STS');
+                            let sasOrigIdx = header.indexOf('SAS');
+                            
                             row.forEach((cell, cIdx) => {
+                                if (cIdx === stsOrigIdx || cIdx === sasOrigIdx) return; // skip for now
+
                                 let safeMapel = mapel.replace(/\s+/g, '');
                                 let cellId = `cell-${safeMapel}-${rActual}-${cIdx}`;
                                 const editable = (isGuru && cIdx >= 4) ? `id="${cellId}" contenteditable="true" inputmode="numeric" onkeydown="handleGuruCellKey(event, this, '${mapel}', ${rActual}, ${cIdx})" onblur="updateGuruCell('${mapel}', ${rActual}, ${cIdx}, this.innerText, this)"` : '';
                                 trHTML.push('<td ' + editable + '>' + cell + '</td>');
 
                                 if (cIdx >= 4) {
+                                    let colName = String(header[cIdx]).trim().toUpperCase();
                                     let num = parseFloat(cell);
-                                    if (!isNaN(num)) {
-                                        total += num;
-                                        count++;
+                                    if (!isNaN(num) && colName.startsWith('S')) { 
+                                        totalS += num; countS++; 
                                     }
                                 }
                             });
 
                             if (hasGrades) {
-                                let avg = count > 0 ? (total / count).toFixed(1) : 0;
+                                let strSTS = stsOrigIdx !== -1 ? row[stsOrigIdx] : '';
+                                let strSAS = sasOrigIdx !== -1 ? row[sasOrigIdx] : '';
+                                let numSTS = parseFloat(strSTS);
+                                let numSAS = parseFloat(strSAS);
+                                if (!isNaN(numSTS)) valSTS = numSTS;
+                                if (!isNaN(numSAS)) valSAS = numSAS;
+
+                                let NS = countS > 0 ? totalS / countS : 0;
+                                let totalNR = NS;
+                                let countNR = 1;
+                                if (valSTS !== null) { totalNR += valSTS; countNR++; }
+                                if (valSAS !== null) { totalNR += valSAS; countNR++; }
+                                let NR = (totalNR / countNR).toFixed(1);
+                                NS = NS.toFixed(1);
+
                                 let rank = rankMap[start + rRelativeIdx] || '-';
                                 let safeMapel = mapel.replace(/\s+/g, '');
-                                trHTML.push('<td id="total-' + safeMapel + '-' + rActual + '" style="font-weight:bold; background:#f4fdf8; text-align:center;">' + total + '</td>');
-                                trHTML.push('<td id="avg-' + safeMapel + '-' + rActual + '" style="font-weight:bold; background:#f4fdf8; text-align:center;">' + avg + '</td>');
-                                trHTML.push('<td style="font-weight:bold; background:#fff8e1; text-align:center;">' + rank + '</td>');
+                                
+                                trHTML.push('<td id="total-' + safeMapel + '-' + rActual + '" style="font-weight:bold; background:#f4fdf8; text-align:center;">' + NS + '</td>');
+
+                                if (stsOrigIdx !== -1) {
+                                    let cellIdSTS = `cell-${safeMapel}-${rActual}-${stsOrigIdx}`;
+                                    let stsEdit = isGuru ? `id="${cellIdSTS}" contenteditable="true" inputmode="numeric" onkeydown="handleGuruCellKey(event, this, '${mapel}', ${rActual}, ${stsOrigIdx})" onblur="updateGuruCell('${mapel}', ${rActual}, ${stsOrigIdx}, this.innerText, this)"` : '';
+                                    trHTML.push(`<td ${stsEdit} style="text-align:center;">${strSTS}</td>`);
+                                }
+                                if (sasOrigIdx !== -1) {
+                                    let cellIdSAS = `cell-${safeMapel}-${rActual}-${sasOrigIdx}`;
+                                    let sasEdit = isGuru ? `id="${cellIdSAS}" contenteditable="true" inputmode="numeric" onkeydown="handleGuruCellKey(event, this, '${mapel}', ${rActual}, ${sasOrigIdx})" onblur="updateGuruCell('${mapel}', ${rActual}, ${sasOrigIdx}, this.innerText, this)"` : '';
+                                    trHTML.push(`<td ${sasEdit} style="text-align:center;">${strSAS}</td>`);
+                                }
+
+                                trHTML.push('<td id="avg-' + safeMapel + '-' + rActual + '" style="font-weight:bold; background:#f4fdf8; text-align:center;">' + NR + '</td>');
+                                trHTML.push('<td class="ranking-col" style="font-weight:bold; background:#fff8e1; text-align:center;">' + rank + '</td>');
                             }
                             trHTML.push('</tr>');
                         });
@@ -1944,9 +2194,9 @@
                     let isWaliBlank = !actualKelas;
                     let mapelDisplay = actualMapel || '.....................';
                     let waliDisplay = isWaliBlank ? '.....................' : actualKelas;
-                    let guruNameDisplay = isWaliBlank ? '.....................' : (gr['Nama Guru'] || '.....................');
-                    let guruPangkatDisplay = isWaliBlank ? '' : (gr['Pangkat Guru'] || '');
-                    let guruNipDisplay = isWaliBlank ? '.....................' : (gr['NIP Guru'] || '.....................');
+                    let guruNameDisplay = isWaliBlank ? '.....................' : (currentGuruData['Nama Guru'] || '.....................');
+                    let guruPangkatDisplay = isWaliBlank ? '' : (currentGuruData['Pangkat Guru'] || '');
+                    let guruNipDisplay = isWaliBlank ? '.....................' : (currentGuruData['NIP Guru'] || '.....................');
 
                     let htmlArr = [
                         '<div class="kop-surat">',
@@ -1974,16 +2224,20 @@
                         '</div>',
                         '</div>',
                         '<table class="guru-table">',
-                        '<thead><tr>' + thHTML.join('') + '</tr></thead>',
+                        '<thead>' + thHTML.join('') + '</thead>',
                         '<tbody>' + trHTML.join('') + '</tbody>',
                         '</table>',
                         '<div class="signature-area">',
                         '<div class="signature-box" style="text-align:left; width: 33%; font-size: 10px; line-height: 1.3;">',
                         '<b>Keterangan:</b><br>',
-                        'F : Asesmen Formatif<br>',
-                        'S : Asesmen Sumatif<br>',
-                        'STS : Sumatif Tengah Semester<br>',
-                        'SAS : Sumatif Akhir Semester',
+                        '<table style="border:none; margin:0; padding:0; width:100%; font-size: 10px; line-height: 1.2;">',
+                        '<tr><td style="width:25px; border:none; padding:1px;">F</td><td style="width:10px; border:none; padding:1px;">:</td><td style="border:none; padding:1px;">Asesmen Formatif</td></tr>',
+                        '<tr><td style="border:none; padding:1px;">S</td><td style="border:none; padding:1px;">:</td><td style="border:none; padding:1px;">Asesmen Sumatif</td></tr>',
+                        '<tr><td style="border:none; padding:1px;">STS</td><td style="border:none; padding:1px;">:</td><td style="border:none; padding:1px;">Sumatif Tengah Semester</td></tr>',
+                        '<tr><td style="border:none; padding:1px;">SAS</td><td style="border:none; padding:1px;">:</td><td style="border:none; padding:1px;">Sumatif Akhir Semester</td></tr>',
+                        '<tr><td style="border:none; padding:1px;">NS</td><td style="border:none; padding:1px;">:</td><td style="border:none; padding:1px;">Nilai Total Sumatif</td></tr>',
+                        '<tr><td style="border:none; padding:1px; vertical-align:top;">NR</td><td style="border:none; padding:1px; vertical-align:top;">:</td><td style="border:none; padding:1px;">Nilai Raport<br><span style="font-size:8px;"><i>(Rata-rata dari NS + STS + SAS)</i></span></td></tr>',
+                        '</table>',
                         '</div>',
                         '<div class="signature-box" style="width: 33%;">',
                         '<p>Mengetahui,</p>',
@@ -1994,7 +2248,7 @@
                         '</div>',
                         '<div class="signature-box">',
                         '<p><span ' + editKop + ' onblur="saveKopField(\'Lokasi\', this.innerText)">' + lokasi + '</span>, ' + tglString + '</p>',
-                        '<p>' + (gr && gr['Akses_Mapel'] ? 'Guru ' + actualMapel : 'Guru Kelas ' + waliDisplay) + '</p>',
+                        '<p>' + (isGuruMapel ? 'Guru ' + actualMapel : 'Guru Kelas ' + waliDisplay) + '</p>',
                         '<p class="name">' + guruNameDisplay + '</p>',
                         '<p>' + guruPangkatDisplay + '</p>',
                         '<p>NIP. ' + guruNipDisplay + '</p>',
@@ -2105,6 +2359,10 @@
                     }
                 }
             });
+
+            // Hide ranking for PDF
+            let rankings = container.querySelectorAll('.ranking-col');
+            rankings.forEach(r => r.style.display = 'none');
         }
 
         function restoreFromPDF(containerId) {
@@ -2138,6 +2396,10 @@
                 p.style.pageBreakAfter = '';
                 p.style.breakAfter = '';
             });
+
+            // Restore ranking after PDF
+            let rankings = container.querySelectorAll('.ranking-col');
+            rankings.forEach(r => r.style.display = '');
         }
 
         function exportAdminPDF() {
@@ -2186,7 +2448,9 @@
                 google.script.run.withSuccessHandler(res => {
                     if (res.status === 'success') {
                         multiMapelData = res.dataMultiMapel;
-                        renderA4Pages('admin-a4-container', wali, allMapels, 'admin_export');
+                        let keys = Object.keys(multiMapelData);
+                        if(keys.length === 0) keys = allMapels;
+                        renderA4Pages('admin-a4-container', wali, keys, 'admin_export');
                         processPDF();
                     } else {
                         document.getElementById('admin-loader').style.display = 'none';
@@ -2424,6 +2688,7 @@
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run.withSuccessHandler(res => {
                     multiMapelData = res.dataMultiMapel;
+                    multiMapelBab = res.dataBab || {};
                     activeMapels = res.activeMapels || [];
                     renderGuruPages();
                     loader.style.display = 'none';
@@ -2446,44 +2711,52 @@
             }
         }
 
-        function quickAddColumn() {
+        function quickAddColumn(type = 'F') {
             if (activeMapels.length === 0 || !multiMapelData[activeMapels[0]]) return showToast("Tampilkan data terlebih dahulu.", "warning");
 
             activeMapels.forEach(mapel => {
                 let data = multiMapelData[mapel];
                 let headers = data[0];
 
-                // Cari angka terbesar dari deret 'F' TERAKHIR saja (sejak ada pemisah)
                 let maxCount = 0;
+                let regex = type === 'S' ? /^s\s*(\d+)$/i : /^f\s*(\d+)$/i;
 
-                // Cari dari belakang, berhenti jika menemukan header yang BUKAN berawalan F
-                for (let i = headers.length - 1; i >= 4; i--) {
-                    // Bersihkan karakter tak kasat mata (zero-width space) dari backend
+                // Cari lokasi yang tepat (sebelum STS dan SAS jika ada)
+                let insertIdx = headers.length;
+                let stsIdx = headers.indexOf('STS');
+                let sasIdx = headers.indexOf('SAS');
+                if (stsIdx !== -1 && sasIdx !== -1) insertIdx = Math.min(stsIdx, sasIdx);
+                else if (stsIdx !== -1) insertIdx = stsIdx;
+                else if (sasIdx !== -1) insertIdx = sasIdx;
+
+                // Mulai pencarian dari sebelum STS/SAS (agar tidak tertabrak STS/SAS saat mencari F mundur)
+                for (let i = insertIdx - 1; i >= 4; i--) {
                     let text = String(headers[i]).replace(/\u200B/g, '').trim();
 
-                    let match = text.match(/^f\s*(\d+)$/i);
+                    let match = text.match(regex);
                     if (match) {
                         let num = parseInt(match[1]);
                         if (!isNaN(num) && num > maxCount) maxCount = num;
                     } else {
-                        // Jika menemukan header BUKAN "F..." (misal "S1", "PTS"), hentikan pencarian!
-                        // Ini yang membuat urutannya terpotong dan bisa kembali ke F1 lagi.
-                        break;
+                        // Jika Formatif (F), berhenti saat bertemu selain F (agar reset ke F1 per Bab).
+                        // Jika Sumatif (S), abaikan dan teruskan pencarian untuk mendapat angka S maksimal global.
+                        if (type === 'F') {
+                            break;
+                        }
                     }
                 }
 
-                let newHeader = `F${maxCount + 1}`;
+                let newHeader = `${type}${maxCount + 1}`;
 
-                // Tidak perlu fallback pencegah duplikat di Frontend, karena Backend sekarang
-                // sudah mendukung nama header yang persis sama dengan teknologi Zero-Width Space!
-                data[0].push(newHeader);
+                // Sisipkan di posisi insertIdx (bukan di-push ke ujung)
+                data[0].splice(insertIdx, 0, newHeader);
                 for (let i = 1; i < data.length; i++) {
-                    data[i].push("");
+                    data[i].splice(insertIdx, 0, "");
                 }
             });
 
             renderGuruPages(); // Re-render layar
-            showToast("Kolom ditambahkan. Klik teks header untuk mengganti namanya.");
+            showToast(`Kolom ${type} ditambahkan. Klik teks header untuk mengganti namanya.`);
         }
 
         function deleteColumn() {
@@ -2495,14 +2768,24 @@
                 let data = multiMapelData[mapel];
                 let headers = data[0];
 
-                if (headers.length > 4) { // pastikan tidak menghapus NO, NISN, Nama, L/P
-                    // Hapus dari header
-                    data[0].pop();
-                    // Hapus dari semua baris nilai
-                    for (let i = 1; i < data.length; i++) {
-                        data[i].pop();
+                if (headers.length > 4) { 
+                    // Cari indeks kolom normal terakhir (bukan STS atau SAS)
+                    let deleteIdx = -1;
+                    for (let i = headers.length - 1; i >= 4; i--) {
+                        let upName = String(headers[i]).trim().toUpperCase();
+                        if (upName !== 'STS' && upName !== 'SAS') {
+                            deleteIdx = i;
+                            break;
+                        }
                     }
-                    deletedCount++;
+
+                    if (deleteIdx !== -1) {
+                        data[0].splice(deleteIdx, 1);
+                        for (let i = 1; i < data.length; i++) {
+                            data[i].splice(deleteIdx, 1);
+                        }
+                        deletedCount++;
+                    }
                 }
             });
 
@@ -2571,24 +2854,42 @@
                 multiMapelData[mapel][rIdx][cIdx] = val;
 
                 let rowData = multiMapelData[mapel][rIdx];
-                let total = 0;
-                let count = 0;
+                let header = multiMapelData[mapel][0];
+                let totalS = 0, countS = 0;
+                let valSTS = null, valSAS = null;
                 for (let i = 4; i < rowData.length; i++) {
                     let n = parseFloat(rowData[i]);
                     if (!isNaN(n)) {
-                        total += n;
-                        count++;
+                        let colName = String(header[i]).trim().toUpperCase();
+                        if (colName === 'STS') valSTS = n;
+                        else if (colName === 'SAS') valSAS = n;
+                        else if (colName.startsWith('S')) {
+                            totalS += n;
+                            countS++;
+                        }
                     }
                 }
-                let avg = count > 0 ? (total / count).toFixed(1) : 0;
+                
+                let NS = countS > 0 ? totalS / countS : 0;
+                let totalNR = NS;
+                let countNR = 1;
+                if (valSTS !== null) { totalNR += valSTS; countNR++; }
+                if (valSAS !== null) { totalNR += valSAS; countNR++; }
+                let NR = (totalNR / countNR).toFixed(1);
+                NS = NS.toFixed(1);
 
                 let safeMapel = mapel.replace(/\s+/g, '');
                 let tdTotal = document.getElementById('total-' + safeMapel + '-' + rIdx);
                 let tdAvg = document.getElementById('avg-' + safeMapel + '-' + rIdx);
 
-                if (tdTotal) tdTotal.innerText = total;
-                if (tdAvg) tdAvg.innerText = avg;
+                if (tdTotal) tdTotal.innerText = NS;
+                if (tdAvg) tdAvg.innerText = NR;
             }
+        }
+
+        function updateBabName(mapel, closerId, val) {
+            if (!multiMapelBab[mapel]) multiMapelBab[mapel] = {};
+            multiMapelBab[mapel][closerId] = val.trim();
         }
 
         function saveGuruData() {
@@ -2599,7 +2900,7 @@
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run.withSuccessHandler(res => {
                     loader.style.display = 'none'; showToast(res);
-                }).saveGuruMassalData(getSelectedGuruClass(), multiMapelData);
+                }).saveGuruMassalData(getSelectedGuruClass(), multiMapelData, multiMapelBab);
             } else {
                 setTimeout(() => { loader.style.display = 'none'; showToast("Local save success"); }, 800);
             }

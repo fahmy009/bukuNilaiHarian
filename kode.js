@@ -195,6 +195,7 @@ function getGuruMassalData(kelas, arrayMapel) {
 
   var resultData = {};
   var activeMapelsOutput = [];
+  var babData = {};
 
   var kelasArr = String(kelas).split(',').map(function(k) { return k.trim(); }).filter(function(k) { return k; });
 
@@ -229,6 +230,15 @@ function getGuruMassalData(kelas, arrayMapel) {
         var mapelIdx = lowerArrayMapel.indexOf(String(nMapel).trim().toLowerCase());
         if (nKelas === targetKelasLower && mapelIdx !== -1) {
           var realMapel = arrayMapel[mapelIdx]; // Use the exact case from frontend
+          var composite = realMapel + '|||' + nKelas;
+
+          // Periksa apakah ini baris Meta Bab
+          if (nNisn === 'META_BAB') {
+            if (!babData[composite]) babData[composite] = {};
+            babData[composite][nKomp] = nNilai;
+            continue; // Skip adding to gradeMap or komponenSet
+          }
+
           if (komponenSet[realMapel].indexOf(nKomp) === -1) {
             komponenSet[realMapel].push(nKomp);
           }
@@ -270,10 +280,10 @@ function getGuruMassalData(kelas, arrayMapel) {
     }
   }
 
-  return { status: 'success', dataMultiMapel: resultData, activeMapels: activeMapelsOutput };
+  return { status: 'success', dataMultiMapel: resultData, activeMapels: activeMapelsOutput, dataBab: babData };
 }
 
-function saveGuruMassalData(kelas, mapelData) {
+function saveGuruMassalData(kelas, mapelData, mapelBab) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheetNilai = ss.getSheetByName('Data_Nilai');
   if (!sheetNilai) {
@@ -325,7 +335,7 @@ function saveGuruMassalData(kelas, mapelData) {
     var currentKelas = parts.length > 1 ? parts[1] : String(kelas);
 
     var frontendNilai = mapelData[compositeKey];
-    if (!frontendNilai || frontendNilai.length < 1) continue; // Minimal ada header (length 1)
+    if (!frontendNilai || frontendNilai.length < 1) continue; // Minimal ada header
 
     var frontendHeaders = frontendNilai[0];
 
@@ -338,7 +348,6 @@ function saveGuruMassalData(kelas, mapelData) {
         continue;
       }
       var baseKomp = String(frontendHeaders[c]).trim();
-      // Bersihkan zero-width space bawaan jika ada
       baseKomp = baseKomp.replace(/\u200B/g, '');
       var safeKomp = baseKomp;
       while (seenHeaders[safeKomp]) {
@@ -348,29 +357,37 @@ function saveGuruMassalData(kelas, mapelData) {
       uniqueHeaders.push(safeKomp);
     }
 
-    // Simpan deklarasi (metadata) kolom agar header tetap ada meskipun tidak ada siswa yang memiliki nilai
+    // Simpan deklarasi (metadata) kolom
     for (var c = 4; c < frontendHeaders.length; c++) {
       var komp = uniqueHeaders[c];
       if (komp) {
         newNilai.push(['-', mapel, currentKelas, komp, '']);
-        // Tampilkan nama bersih di notifikasi
         var cleanName = komp.replace(/\u200B/g, '');
         if (totalSavedHeaders.indexOf(cleanName) === -1) totalSavedHeaders.push(cleanName);
       }
     }
 
+    // Simpan nilai siswa
     for (var fr = 1; fr < frontendNilai.length; fr++) {
       var fRow = frontendNilai[fr];
       var nisn = String(fRow[1]).trim();
-
       if (!nisn) continue;
 
       for (var c = 4; c < frontendHeaders.length; c++) {
         var komp = uniqueHeaders[c];
         var val = fRow[c];
-
         if (val !== '' && val !== null && val !== undefined) {
           newNilai.push([nisn, mapel, currentKelas, komp, val]);
+        }
+      }
+    }
+
+    // Simpan META_BAB
+    if (mapelBab && mapelBab[compositeKey]) {
+      var babObj = mapelBab[compositeKey];
+      for (var kompName in babObj) {
+        if (babObj[kompName] && String(babObj[kompName]).trim() !== '') {
+          newNilai.push(['META_BAB', mapel, currentKelas, kompName, babObj[kompName]]);
         }
       }
     }
